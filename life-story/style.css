@@ -63,6 +63,22 @@ input::placeholder {
   color: #9c8fc0;
 }
 
+.name-row {
+  display: flex;
+  gap: 10px;
+}
+
+.name-row input {
+  flex: 1;
+}
+
+#author-credit {
+  text-align: center;
+  color: #7a6f99;
+  font-size: 0.8rem;
+  margin-top: 28px;
+}
+
 .radio-row {
   display: flex;
   gap: 18px;

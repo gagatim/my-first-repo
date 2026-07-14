@@ -13,10 +13,16 @@
 
     <section id="form-section">
       <label>姓名</label>
-      <input id="name-input" placeholder="輸入姓名" maxlength="10">
+      <div class="name-row">
+        <input id="surname-input" placeholder="姓" maxlength="4">
+        <input id="given-input" placeholder="名" maxlength="6">
+      </div>
 
       <label>出生年份</label>
       <input id="year-input" type="number" placeholder="例如 1995" value="1995">
+
+      <label>故事字數</label>
+      <select id="length-select"></select>
 
       <label>國家</label>
       <select id="country-select"></select>
@@ -55,6 +61,8 @@
         <button id="copy-btn">📋 複製文字</button>
       </div>
     </section>
+
+    <footer id="author-credit">作者：葉晉廷</footer>
   </div>
 
   <script src="data.js"></script>
