@@ -301,8 +301,13 @@ button.danger {
 
 .battle-actions {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 8px;
+}
+
+.battle-actions button {
+  padding: 12px 6px;
+  font-size: 0.85rem;
 }
 
 .battle-skill-list {
@@ -314,4 +319,133 @@ button.danger {
 
 .battle-skill-list button {
   text-align: left;
+}
+
+/* Stage select */
+
+.stage-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.stage-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #2a2340;
+  border-radius: 14px;
+  padding: 12px 14px;
+}
+
+.stage-emoji {
+  font-size: 2rem;
+}
+
+.stage-info {
+  flex: 1;
+}
+
+.stage-name {
+  font-weight: bold;
+}
+
+.stage-sub {
+  font-size: 0.78rem;
+  color: #b8aed0;
+}
+
+/* Shop */
+
+.shop-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.shop-tabs button {
+  flex: 1;
+  min-width: 60px;
+  padding: 8px 4px;
+  font-size: 0.75rem;
+  background: #362c4f;
+}
+
+.shop-tabs button.selected {
+  background: linear-gradient(135deg, #f6b93b, #e58e26);
+  color: #2b1d00;
+  font-weight: bold;
+}
+
+.shop-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.shop-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #2a2340;
+  border-radius: 14px;
+  padding: 12px 14px;
+}
+
+.shop-emoji {
+  font-size: 1.8rem;
+}
+
+.shop-info {
+  flex: 1;
+}
+
+.shop-name {
+  font-weight: bold;
+}
+
+.shop-desc {
+  font-size: 0.78rem;
+  color: #b8aed0;
+}
+
+.shop-buy-btn {
+  white-space: nowrap;
+}
+
+/* Inventory / equipment */
+
+.equip-row {
+  background: #1c1730;
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin: 8px 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+#owned-weapons .shop-row,
+#owned-armors .shop-row {
+  margin-bottom: 8px;
+}
+
+#owned-consumables {
+  font-size: 0.85rem;
+  line-height: 1.8;
+}
+
+#enhance-panel label {
+  font-size: 0.85rem;
+  display: block;
+  margin: 8px 0;
+}
+
+#enhance-panel button {
+  margin-top: 10px;
+  margin-right: 8px;
 }

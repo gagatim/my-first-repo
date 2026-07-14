@@ -5,16 +5,41 @@ let selectedClassId = null;
 let battle = null;
 let dialogueQueue = [];
 let dialogueOnComplete = null;
+let activeShopTab = "weapon";
 
 function saveGame() {
   localStorage.setItem(SAVE_KEY, JSON.stringify(game));
+}
+
+function normalizeGame(g) {
+  if (g.gold === undefined) g.gold = 0;
+  if (g.ascendCount === undefined) g.ascendCount = 0;
+  if (!g.inventory) g.inventory = { weapons: {}, armors: {}, potions: {}, materials: {} };
+  if (!g.inventory.weapons) g.inventory.weapons = {};
+  if (!g.inventory.armors) g.inventory.armors = {};
+  if (!g.inventory.potions) g.inventory.potions = {};
+  if (!g.inventory.materials) g.inventory.materials = {};
+  if (!g.equipped) g.equipped = { weapon: null, armor: null };
+  if (!g.purchasedSkills) g.purchasedSkills = [];
+  if (!g.bonusStats) g.bonusStats = { atk: 0, def: 0, hp: 0, mp: 0, spd: 0 };
+  if (!g.statBoostCounts) g.statBoostCounts = { atk: 0, def: 0, hp: 0, mp: 0, spd: 0 };
+  if (g.unlockedTier === undefined) {
+    const oldIndex = g.storyIndex || 0;
+    g.unlockedTier = Math.min(7, oldIndex);
+    const loops = Math.floor(oldIndex / 8);
+    g.tierClears = new Array(8).fill(0).map((_, i) => (i < g.unlockedTier ? loops + 1 : loops));
+    g.tierDialogueShown = new Array(8).fill(false).map((_, i) => i < g.unlockedTier || oldIndex > 0);
+  }
+  if (!g.tierClears) g.tierClears = new Array(8).fill(0);
+  if (!g.tierDialogueShown) g.tierDialogueShown = new Array(8).fill(false);
+  return g;
 }
 
 function loadGame() {
   const raw = localStorage.getItem(SAVE_KEY);
   if (!raw) return null;
   try {
-    return JSON.parse(raw);
+    return normalizeGame(JSON.parse(raw));
   } catch (e) {
     return null;
   }
@@ -29,17 +54,35 @@ function expToNext(level) {
   return Math.floor(10 * level + 20);
 }
 
+function findItem(list, id) {
+  return list.find((x) => x.id === id);
+}
+
 function computeStats(g) {
   const cls = CLASSES[g.classId];
   const lvl = g.level;
   const mult = 1 + g.ascendCount * 0.15;
-  return {
-    maxHp: Math.round((cls.base.hp + cls.growth.hp * (lvl - 1)) * mult),
-    maxMp: Math.round((cls.base.mp + cls.growth.mp * (lvl - 1)) * mult),
-    atk: Math.round((cls.base.atk + cls.growth.atk * (lvl - 1)) * mult),
-    def: Math.round((cls.base.def + cls.growth.def * (lvl - 1)) * mult),
-    spd: Math.round((cls.base.spd + cls.growth.spd * (lvl - 1)) * mult),
-  };
+  let maxHp = Math.round((cls.base.hp + cls.growth.hp * (lvl - 1)) * mult) + g.bonusStats.hp;
+  let maxMp = Math.round((cls.base.mp + cls.growth.mp * (lvl - 1)) * mult) + g.bonusStats.mp;
+  let atk = Math.round((cls.base.atk + cls.growth.atk * (lvl - 1)) * mult) + g.bonusStats.atk;
+  let def = Math.round((cls.base.def + cls.growth.def * (lvl - 1)) * mult) + g.bonusStats.def;
+  let spd = Math.round((cls.base.spd + cls.growth.spd * (lvl - 1)) * mult) + g.bonusStats.spd;
+
+  if (g.equipped.weapon && g.inventory.weapons[g.equipped.weapon]) {
+    const w = findItem(WEAPONS, g.equipped.weapon);
+    const lvl2 = g.inventory.weapons[g.equipped.weapon].enhanceLevel;
+    atk += Math.round(w.atk * (1 + lvl2 * 0.15));
+  }
+  if (g.equipped.armor && g.inventory.armors[g.equipped.armor]) {
+    const a = findItem(ARMORS, g.equipped.armor);
+    const lvl2 = g.inventory.armors[g.equipped.armor].enhanceLevel;
+    def += Math.round(a.def * (1 + lvl2 * 0.15));
+  }
+  return { maxHp, maxMp, atk, def, spd };
+}
+
+function hasSkillUnlocked(skill) {
+  return game.level >= skill.unlockLevel || game.purchasedSkills.includes(skill.id);
 }
 
 /* ---------- Character creation ---------- */
@@ -71,6 +114,26 @@ function renderClassOptions() {
 function updateCreateButton() {
   const name = document.getElementById("name-input").value.trim();
   document.getElementById("create-btn").disabled = !(name && selectedClassId);
+}
+
+function createNewGame(name, classId) {
+  game = {
+    name,
+    classId,
+    level: 1,
+    exp: 0,
+    ascendCount: 0,
+    gold: 300,
+    unlockedTier: 0,
+    tierClears: new Array(8).fill(0),
+    tierDialogueShown: new Array(8).fill(false),
+    inventory: { weapons: {}, armors: {}, potions: {}, materials: {} },
+    equipped: { weapon: null, armor: null },
+    purchasedSkills: [],
+    bonusStats: { atk: 0, def: 0, hp: 0, mp: 0, spd: 0 },
+    statBoostCounts: { atk: 0, def: 0, hp: 0, mp: 0, spd: 0 },
+  };
+  saveGame();
 }
 
 /* ---------- Menu ---------- */
@@ -106,15 +169,73 @@ function renderSkillsPanel() {
   const panel = document.getElementById("skills-panel");
   panel.innerHTML = cls.skills
     .map((skill) => {
-      const locked = game.level < skill.unlockLevel;
+      const unlocked = hasSkillUnlocked(skill);
+      const canBuy = !unlocked && skill.price > 0 && game.gold >= skill.price;
+      let extra = "";
+      if (!unlocked) {
+        extra = skill.price > 0
+          ? `<button class="buy-skill-btn" data-skill="${skill.id}" ${canBuy ? "" : "disabled"}>💰 花費 ${skill.price} 金幣直接學會</button>`
+          : `<span class="locked">Lv.${skill.unlockLevel} 解鎖</span>`;
+      }
       return `
-        <div class="skill-item ${locked ? "locked" : ""}">
-          <div class="skill-name">${locked ? "🔒 " : ""}${skill.name}${locked ? `（Lv.${skill.unlockLevel} 解鎖）` : ` · MP ${skill.mpCost}`}</div>
+        <div class="skill-item ${unlocked ? "" : "locked"}">
+          <div class="skill-name">${unlocked ? "" : "🔒 "}${skill.name}${unlocked ? ` · MP ${skill.mpCost}` : ""}</div>
           <div class="skill-desc">${skill.desc}</div>
+          ${extra}
         </div>
       `;
     })
     .join("");
+  panel.querySelectorAll(".buy-skill-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const skillId = btn.dataset.skill;
+      const skill = cls.skills.find((s) => s.id === skillId);
+      if (game.gold < skill.price) return;
+      game.gold -= skill.price;
+      game.purchasedSkills.push(skillId);
+      saveGame();
+      renderMenu();
+      renderSkillsPanel();
+      document.getElementById("skills-panel").classList.remove("hidden");
+    });
+  });
+}
+
+/* ---------- Stage select ---------- */
+
+function renderStageSelect() {
+  const container = document.getElementById("stage-list");
+  container.innerHTML = "";
+  for (let tier = 0; tier <= game.unlockedTier; tier++) {
+    const m = MONSTERS[tier];
+    const clears = game.tierClears[tier];
+    const scale = 1 + clears * 0.18;
+    const row = document.createElement("div");
+    row.className = "stage-row";
+    row.innerHTML = `
+      <div class="stage-emoji">${m.emoji}</div>
+      <div class="stage-info">
+        <div class="stage-name">${m.name}</div>
+        <div class="stage-sub">已擊敗 ${clears} 次 · 強度 x${scale.toFixed(2)} · HP ${Math.round(m.hp * scale)}</div>
+      </div>
+      <button class="challenge-btn" data-tier="${tier}">挑戰</button>
+    `;
+    container.appendChild(row);
+  }
+  container.querySelectorAll(".challenge-btn").forEach((btn) => {
+    btn.addEventListener("click", () => challengeTier(parseInt(btn.dataset.tier, 10)));
+  });
+}
+
+function challengeTier(tier) {
+  const isFirstTime = !game.tierDialogueShown[tier];
+  if (isFirstTime) {
+    game.tierDialogueShown[tier] = true;
+    saveGame();
+    playDialogue(STORY[tier].pre, () => startBattle(tier, isFirstTime));
+  } else {
+    startBattle(tier, isFirstTime);
+  }
 }
 
 /* ---------- Story dialogue ---------- */
@@ -138,6 +259,301 @@ function advanceDialogue() {
   document.getElementById("dialogue-text").textContent = line.text;
 }
 
+/* ---------- Shop ---------- */
+
+function goldLine() {
+  return `💰 目前金幣：${game.gold}`;
+}
+
+function renderShop() {
+  document.getElementById("shop-gold-text").textContent = goldLine();
+  document.querySelectorAll("#shop-tabs button").forEach((b) => b.classList.toggle("selected", b.dataset.tab === activeShopTab));
+  const list = document.getElementById("shop-list");
+  list.innerHTML = "";
+
+  if (activeShopTab === "weapon") {
+    WEAPONS.forEach((w) => {
+      const owned = !!game.inventory.weapons[w.id];
+      list.appendChild(shopRow(w.emoji, w.name, `攻擊力 +${w.atk}`, w.price, owned, () => buyWeapon(w.id)));
+    });
+  } else if (activeShopTab === "armor") {
+    ARMORS.forEach((a) => {
+      const owned = !!game.inventory.armors[a.id];
+      list.appendChild(shopRow(a.emoji, a.name, `防禦力 +${a.def}`, a.price, owned, () => buyArmor(a.id)));
+    });
+  } else if (activeShopTab === "potion") {
+    POTIONS.forEach((p) => {
+      const qty = game.inventory.potions[p.id] || 0;
+      list.appendChild(shopRow(p.emoji, `${p.name}（持有 ${qty}）`, p.desc, p.price, false, () => buyPotion(p.id)));
+    });
+  } else if (activeShopTab === "material") {
+    MATERIALS.forEach((m) => {
+      const qty = game.inventory.materials[m.id] || 0;
+      list.appendChild(shopRow(m.emoji, `${m.name}（持有 ${qty}）`, m.desc, m.price, false, () => buyMaterial(m.id)));
+    });
+  } else if (activeShopTab === "statboost") {
+    STAT_BOOSTS.forEach((s) => {
+      const count = game.statBoostCounts[s.id] || 0;
+      const price = Math.round(s.basePrice * (1 + count * 0.5));
+      list.appendChild(shopRow(s.emoji, `${s.name}（已購買 ${count} 次）`, s.desc, price, false, () => buyStatBoost(s.id)));
+    });
+  } else if (activeShopTab === "skill") {
+    const cls = CLASSES[game.classId];
+    cls.skills
+      .filter((s) => s.price > 0)
+      .forEach((skill) => {
+        const unlocked = hasSkillUnlocked(skill);
+        list.appendChild(shopRow("📘", skill.name, skill.desc, skill.price, unlocked, () => buySkill(skill.id)));
+      });
+  } else if (activeShopTab === "bundle") {
+    BUNDLES.forEach((b) => {
+      list.appendChild(shopRow(b.emoji, b.name, b.desc, b.price, false, () => buyBundle(b.id)));
+    });
+  }
+}
+
+function shopRow(emoji, name, desc, price, owned, onBuy) {
+  const row = document.createElement("div");
+  row.className = "shop-row";
+  const canAfford = game.gold >= price;
+  row.innerHTML = `
+    <div class="shop-emoji">${emoji}</div>
+    <div class="shop-info">
+      <div class="shop-name">${name}</div>
+      <div class="shop-desc">${desc}</div>
+    </div>
+    <button class="shop-buy-btn" ${owned || !canAfford ? "disabled" : ""}>${owned ? "已擁有" : `💰 ${price}`}</button>
+  `;
+  if (!owned) {
+    row.querySelector(".shop-buy-btn").addEventListener("click", onBuy);
+  }
+  return row;
+}
+
+function buyWeapon(id) {
+  const w = findItem(WEAPONS, id);
+  if (game.gold < w.price || game.inventory.weapons[id]) return;
+  game.gold -= w.price;
+  game.inventory.weapons[id] = { enhanceLevel: 0 };
+  if (!game.equipped.weapon) game.equipped.weapon = id;
+  saveGame();
+  renderShop();
+}
+
+function buyArmor(id) {
+  const a = findItem(ARMORS, id);
+  if (game.gold < a.price || game.inventory.armors[id]) return;
+  game.gold -= a.price;
+  game.inventory.armors[id] = { enhanceLevel: 0 };
+  if (!game.equipped.armor) game.equipped.armor = id;
+  saveGame();
+  renderShop();
+}
+
+function buyPotion(id) {
+  const p = findItem(POTIONS, id);
+  if (game.gold < p.price) return;
+  game.gold -= p.price;
+  game.inventory.potions[id] = (game.inventory.potions[id] || 0) + 1;
+  saveGame();
+  renderShop();
+}
+
+function buyMaterial(id) {
+  const m = findItem(MATERIALS, id);
+  if (game.gold < m.price) return;
+  game.gold -= m.price;
+  game.inventory.materials[id] = (game.inventory.materials[id] || 0) + 1;
+  saveGame();
+  renderShop();
+}
+
+function buyStatBoost(id) {
+  const s = findItem(STAT_BOOSTS, id);
+  const count = game.statBoostCounts[id] || 0;
+  const price = Math.round(s.basePrice * (1 + count * 0.5));
+  if (game.gold < price) return;
+  game.gold -= price;
+  game.bonusStats[s.stat] += s.amount;
+  game.statBoostCounts[id] = count + 1;
+  saveGame();
+  renderShop();
+}
+
+function buySkill(id) {
+  const cls = CLASSES[game.classId];
+  const skill = cls.skills.find((s) => s.id === id);
+  if (hasSkillUnlocked(skill) || game.gold < skill.price) return;
+  game.gold -= skill.price;
+  game.purchasedSkills.push(id);
+  saveGame();
+  renderShop();
+}
+
+function buyBundle(id) {
+  const b = findItem(BUNDLES, id);
+  if (game.gold < b.price) return;
+  game.gold -= b.price;
+  if (b.contains.potions) {
+    Object.entries(b.contains.potions).forEach(([pid, qty]) => {
+      game.inventory.potions[pid] = (game.inventory.potions[pid] || 0) + qty;
+    });
+  }
+  if (b.contains.materials) {
+    Object.entries(b.contains.materials).forEach(([mid, qty]) => {
+      game.inventory.materials[mid] = (game.inventory.materials[mid] || 0) + qty;
+    });
+  }
+  saveGame();
+  renderShop();
+}
+
+/* ---------- Inventory / Equipment ---------- */
+
+function renderInventory() {
+  document.getElementById("enhance-panel").classList.add("hidden");
+
+  const weaponRow = document.getElementById("equipped-weapon");
+  if (game.equipped.weapon) {
+    const w = findItem(WEAPONS, game.equipped.weapon);
+    const lvl = game.inventory.weapons[game.equipped.weapon].enhanceLevel;
+    weaponRow.innerHTML = `${w.emoji} ${w.name} +${lvl}（攻擊 +${Math.round(w.atk * (1 + lvl * 0.15))}）
+      <button data-type="weapon" data-id="${w.id}" class="enhance-open-btn">🔧 強化</button>`;
+  } else {
+    weaponRow.textContent = "（未裝備武器）";
+  }
+
+  const armorRow = document.getElementById("equipped-armor");
+  if (game.equipped.armor) {
+    const a = findItem(ARMORS, game.equipped.armor);
+    const lvl = game.inventory.armors[game.equipped.armor].enhanceLevel;
+    armorRow.innerHTML = `${a.emoji} ${a.name} +${lvl}（防禦 +${Math.round(a.def * (1 + lvl * 0.15))}）
+      <button data-type="armor" data-id="${a.id}" class="enhance-open-btn">🔧 強化</button>`;
+  } else {
+    armorRow.textContent = "（未裝備防具）";
+  }
+
+  const weaponsContainer = document.getElementById("owned-weapons");
+  weaponsContainer.innerHTML = "";
+  Object.keys(game.inventory.weapons).forEach((id) => {
+    const w = findItem(WEAPONS, id);
+    const lvl = game.inventory.weapons[id].enhanceLevel;
+    const equipped = game.equipped.weapon === id;
+    const row = document.createElement("div");
+    row.className = "shop-row";
+    row.innerHTML = `
+      <div class="shop-emoji">${w.emoji}</div>
+      <div class="shop-info">
+        <div class="shop-name">${w.name} +${lvl}</div>
+        <div class="shop-desc">攻擊力 +${Math.round(w.atk * (1 + lvl * 0.15))}</div>
+      </div>
+      <button ${equipped ? "disabled" : ""}>${equipped ? "裝備中" : "裝備"}</button>
+    `;
+    if (!equipped) row.querySelector("button").addEventListener("click", () => { game.equipped.weapon = id; saveGame(); renderInventory(); });
+    weaponsContainer.appendChild(row);
+  });
+
+  const armorsContainer = document.getElementById("owned-armors");
+  armorsContainer.innerHTML = "";
+  Object.keys(game.inventory.armors).forEach((id) => {
+    const a = findItem(ARMORS, id);
+    const lvl = game.inventory.armors[id].enhanceLevel;
+    const equipped = game.equipped.armor === id;
+    const row = document.createElement("div");
+    row.className = "shop-row";
+    row.innerHTML = `
+      <div class="shop-emoji">${a.emoji}</div>
+      <div class="shop-info">
+        <div class="shop-name">${a.name} +${lvl}</div>
+        <div class="shop-desc">防禦力 +${Math.round(a.def * (1 + lvl * 0.15))}</div>
+      </div>
+      <button ${equipped ? "disabled" : ""}>${equipped ? "裝備中" : "裝備"}</button>
+    `;
+    if (!equipped) row.querySelector("button").addEventListener("click", () => { game.equipped.armor = id; saveGame(); renderInventory(); });
+    armorsContainer.appendChild(row);
+  });
+
+  const consumables = document.getElementById("owned-consumables");
+  const lines = [];
+  POTIONS.forEach((p) => {
+    const qty = game.inventory.potions[p.id] || 0;
+    if (qty > 0) lines.push(`${p.emoji} ${p.name} x${qty}`);
+  });
+  MATERIALS.forEach((m) => {
+    const qty = game.inventory.materials[m.id] || 0;
+    if (qty > 0) lines.push(`${m.emoji} ${m.name} x${qty}`);
+  });
+  consumables.innerHTML = lines.length ? lines.map((l) => `<div>${l}</div>`).join("") : "（沒有藥水或材料）";
+
+  document.querySelectorAll(".enhance-open-btn").forEach((btn) => {
+    btn.addEventListener("click", () => openEnhancePanel(btn.dataset.type, btn.dataset.id));
+  });
+}
+
+function openEnhancePanel(type, id) {
+  const panel = document.getElementById("enhance-panel");
+  const isWeapon = type === "weapon";
+  const def = findItem(isWeapon ? WEAPONS : ARMORS, id);
+  const entry = isWeapon ? game.inventory.weapons[id] : game.inventory.armors[id];
+  const level = entry.enhanceLevel;
+  const maxed = level >= ENHANCE_MAX_LEVEL;
+  const cost = enhanceCost(level);
+  const rate = ENHANCE_SUCCESS_RATE[Math.min(level, ENHANCE_SUCCESS_RATE.length - 1)];
+  const stabilizerQty = game.inventory.materials.stabilizer || 0;
+  const guaranteeQty = game.inventory.materials.guarantee_scroll || 0;
+
+  panel.classList.remove("hidden");
+  panel.innerHTML = `
+    <h3>${def.emoji} ${def.name} 強化（目前 +${level}）</h3>
+    ${maxed
+      ? `<p>已達最高強化等級！</p>`
+      : `
+        <p>下一級：+${level + 1} · 花費 ${cost} 金幣 · 成功率 ${Math.round(rate * 100)}%</p>
+        <label><input type="checkbox" id="use-stabilizer" ${stabilizerQty ? "" : "disabled"}> 使用安定符（持有 ${stabilizerQty}，失敗不降級）</label><br>
+        <label><input type="checkbox" id="use-guarantee" ${guaranteeQty ? "" : "disabled"}> 使用100%成功卷軸（持有 ${guaranteeQty}，必定成功）</label><br>
+        <button id="do-enhance-btn" ${game.gold >= cost ? "" : "disabled"}>強化（金幣：${game.gold}）</button>
+      `}
+    <button id="close-enhance-btn">關閉</button>
+  `;
+
+  if (!maxed) {
+    document.getElementById("do-enhance-btn").addEventListener("click", () => {
+      doEnhance(type, id);
+    });
+  }
+  document.getElementById("close-enhance-btn").addEventListener("click", () => {
+    panel.classList.add("hidden");
+  });
+}
+
+function doEnhance(type, id) {
+  const isWeapon = type === "weapon";
+  const entry = isWeapon ? game.inventory.weapons[id] : game.inventory.armors[id];
+  const level = entry.enhanceLevel;
+  const cost = enhanceCost(level);
+  if (game.gold < cost) return;
+
+  const useGuarantee = document.getElementById("use-guarantee").checked && (game.inventory.materials.guarantee_scroll || 0) > 0;
+  const useStabilizer = !useGuarantee && document.getElementById("use-stabilizer").checked && (game.inventory.materials.stabilizer || 0) > 0;
+
+  game.gold -= cost;
+  const rate = ENHANCE_SUCCESS_RATE[Math.min(level, ENHANCE_SUCCESS_RATE.length - 1)];
+  const success = useGuarantee || Math.random() < rate;
+
+  if (useGuarantee) game.inventory.materials.guarantee_scroll--;
+  else if (useStabilizer) game.inventory.materials.stabilizer--;
+
+  if (success) {
+    entry.enhanceLevel++;
+  } else if (!useStabilizer) {
+    entry.enhanceLevel = Math.max(0, entry.enhanceLevel - 1);
+  }
+
+  saveGame();
+  renderInventory();
+  openEnhancePanel(type, id);
+}
+
 /* ---------- Battle ---------- */
 
 function clearLog() {
@@ -153,18 +569,12 @@ function log(msg) {
   while (el.children.length > 40) el.removeChild(el.firstChild);
 }
 
-function startStoryStage() {
-  const stageIndex = game.storyIndex;
-  const stage = STORY[stageIndex % STORY.length];
-  playDialogue(stage.pre, () => startBattle(stageIndex));
-}
-
-function startBattle(stageIndex) {
-  const loopCount = Math.floor(stageIndex / MONSTERS.length);
-  const baseMonster = MONSTERS[stageIndex % MONSTERS.length];
-  const scale = 1 + loopCount * 0.35;
+function startBattle(tier, showPostDialogue) {
+  const baseMonster = MONSTERS[tier];
+  const clears = game.tierClears[tier];
+  const scale = 1 + clears * 0.18;
   const monster = {
-    name: loopCount > 0 ? `${baseMonster.name}（強化 x${loopCount + 1}）` : baseMonster.name,
+    name: clears > 0 ? `${baseMonster.name}（強度 x${scale.toFixed(2)}）` : baseMonster.name,
     emoji: baseMonster.emoji,
     maxHp: Math.round(baseMonster.hp * scale),
     hp: Math.round(baseMonster.hp * scale),
@@ -173,10 +583,12 @@ function startBattle(stageIndex) {
     spd: Math.round(baseMonster.spd * scale),
     exp: Math.round(baseMonster.exp * scale),
     gold: Math.round(baseMonster.gold * scale),
+    drops: baseMonster.drops,
   };
   const stats = computeStats(game);
   battle = {
-    stageIndex,
+    tier,
+    showPostDialogue,
     monster,
     player: { maxHp: stats.maxHp, hp: stats.maxHp, maxMp: stats.maxMp, mp: stats.maxMp, atk: stats.atk, def: stats.def, spd: stats.spd },
     playerStance: false,
@@ -189,6 +601,7 @@ function startBattle(stageIndex) {
   showScreen("screen-battle");
   document.getElementById("battle-actions").classList.remove("hidden");
   document.getElementById("battle-skill-list").classList.add("hidden");
+  document.getElementById("battle-potion-list").classList.add("hidden");
   document.getElementById("battle-continue-btn").classList.add("hidden");
   setActionsDisabled(false);
   renderBattle();
@@ -252,6 +665,32 @@ function playerUseSkill(skill) {
   }
 }
 
+function usePotion(potionId) {
+  if (battle.over) return;
+  const qty = game.inventory.potions[potionId] || 0;
+  if (qty <= 0) return;
+  const p = findItem(POTIONS, potionId);
+  game.inventory.potions[potionId] = qty - 1;
+  if (p.type === "hp") {
+    const amt = Math.round(battle.player.maxHp * p.restore);
+    battle.player.hp = Math.min(battle.player.maxHp, battle.player.hp + amt);
+    log(`你使用了${p.name}，恢復了 ${amt} 點 HP！`);
+  } else {
+    const amt = Math.round(battle.player.maxMp * p.restore);
+    battle.player.mp = Math.min(battle.player.maxMp, battle.player.mp + amt);
+    log(`你使用了${p.name}，恢復了 ${amt} 點 MP！`);
+  }
+  saveGame();
+  document.getElementById("battle-potion-list").classList.add("hidden");
+  renderBattle();
+  setActionsDisabled(true);
+  setTimeout(() => {
+    monsterTurn();
+    renderBattle();
+    if (!checkBattleEnd()) setActionsDisabled(false);
+  }, 600);
+}
+
 function monsterTurn() {
   if (battle.over || battle.monster.hp <= 0) return;
   const cls = CLASSES[game.classId];
@@ -276,12 +715,14 @@ function monsterTurn() {
 function setActionsDisabled(disabled) {
   document.getElementById("attack-btn").disabled = disabled;
   document.getElementById("skill-menu-btn").disabled = disabled;
+  document.getElementById("potion-menu-btn").disabled = disabled;
   document.getElementById("flee-btn").disabled = disabled;
 }
 
 function doPlayerAction(action) {
   if (battle.over) return;
   document.getElementById("battle-skill-list").classList.add("hidden");
+  document.getElementById("battle-potion-list").classList.add("hidden");
   setActionsDisabled(true);
 
   const runPlayer = () => {
@@ -342,28 +783,68 @@ function gainExp(amount) {
   if (leveledUp) log(`🆙 等級提升至 Lv.${game.level}！`);
 }
 
+function rollDrops(drops) {
+  const dropped = [];
+  drops.forEach((d) => {
+    if (Math.random() < d.chance) dropped.push(d.id);
+  });
+  return dropped;
+}
+
 function onVictory() {
   log(`🎉 你打倒了 ${battle.monster.name}！`);
-  const stageIndex = battle.stageIndex;
+  const tier = battle.tier;
   const expGain = battle.monster.exp;
   const goldGain = battle.monster.gold;
   game.gold += goldGain;
   log(`獲得 ${expGain} EXP、${goldGain} 金幣！`);
   gainExp(expGain);
-  game.storyIndex = stageIndex + 1;
+
+  const dropped = rollDrops(battle.monster.drops);
+  dropped.forEach((itemId) => {
+    const w = findItem(WEAPONS, itemId);
+    if (w) {
+      if (!game.inventory.weapons[itemId]) {
+        game.inventory.weapons[itemId] = { enhanceLevel: 0 };
+        log(`✨ 掉落了武器：${w.emoji} ${w.name}！`);
+      } else {
+        log(`✨ 掉落了武器：${w.emoji} ${w.name}（已擁有，自動轉換為 ${Math.round(w.price / 4)} 金幣）`);
+        game.gold += Math.round(w.price / 4);
+      }
+      return;
+    }
+    const a = findItem(ARMORS, itemId);
+    if (a) {
+      if (!game.inventory.armors[itemId]) {
+        game.inventory.armors[itemId] = { enhanceLevel: 0 };
+        log(`✨ 掉落了防具：${a.emoji} ${a.name}！`);
+      } else {
+        log(`✨ 掉落了防具：${a.emoji} ${a.name}（已擁有，自動轉換為 ${Math.round(a.price / 4)} 金幣）`);
+        game.gold += Math.round(a.price / 4);
+      }
+    }
+  });
+
+  game.tierClears[tier]++;
+  if (tier === game.unlockedTier && game.unlockedTier < 7) game.unlockedTier++;
   saveGame();
 
   document.getElementById("battle-actions").classList.add("hidden");
   document.getElementById("battle-skill-list").classList.add("hidden");
+  document.getElementById("battle-potion-list").classList.add("hidden");
   const continueBtn = document.getElementById("battle-continue-btn");
   continueBtn.textContent = "繼續 ▶";
   continueBtn.classList.remove("hidden");
   continueBtn.onclick = () => {
-    const stage = STORY[stageIndex % STORY.length];
-    playDialogue(stage.post, () => {
+    if (battle.showPostDialogue) {
+      playDialogue(STORY[tier].post, () => {
+        showScreen("screen-menu");
+        renderMenu();
+      });
+    } else {
       showScreen("screen-menu");
       renderMenu();
-    });
+    }
   };
 }
 
@@ -372,6 +853,7 @@ function onDefeat() {
   saveGame();
   document.getElementById("battle-actions").classList.add("hidden");
   document.getElementById("battle-skill-list").classList.add("hidden");
+  document.getElementById("battle-potion-list").classList.add("hidden");
   const continueBtn = document.getElementById("battle-continue-btn");
   continueBtn.textContent = "返回主選單";
   continueBtn.classList.remove("hidden");
@@ -386,14 +868,32 @@ function renderSkillList() {
   const container = document.getElementById("battle-skill-list");
   container.innerHTML = "";
   cls.skills.forEach((skill) => {
-    const locked = game.level < skill.unlockLevel;
+    const unlocked = hasSkillUnlocked(skill);
     const insufficientMp = battle.player.mp < skill.mpCost;
     const btn = document.createElement("button");
-    btn.disabled = locked || insufficientMp || battle.over;
-    btn.textContent = locked ? `🔒 ${skill.name}（Lv.${skill.unlockLevel} 解鎖）` : `${skill.name}（MP ${skill.mpCost}）— ${skill.desc}`;
-    if (!locked) {
+    btn.disabled = !unlocked || insufficientMp || battle.over;
+    btn.textContent = !unlocked ? `🔒 ${skill.name}（Lv.${skill.unlockLevel} 解鎖或商店購買）` : `${skill.name}（MP ${skill.mpCost}）— ${skill.desc}`;
+    if (unlocked) {
       btn.addEventListener("click", () => doPlayerAction({ type: "skill", skill, forcedFirst: !!skill.forcedFirst }));
     }
+    container.appendChild(btn);
+  });
+}
+
+function renderPotionList() {
+  const container = document.getElementById("battle-potion-list");
+  container.innerHTML = "";
+  const owned = POTIONS.filter((p) => (game.inventory.potions[p.id] || 0) > 0);
+  if (owned.length === 0) {
+    container.innerHTML = "<p>沒有藥水，先去商店買一些吧。</p>";
+    return;
+  }
+  owned.forEach((p) => {
+    const qty = game.inventory.potions[p.id];
+    const btn = document.createElement("button");
+    btn.disabled = battle.over;
+    btn.textContent = `${p.emoji} ${p.name} x${qty} — ${p.desc}`;
+    btn.addEventListener("click", () => usePotion(p.id));
     container.appendChild(btn);
   });
 }
@@ -416,21 +916,43 @@ window.addEventListener("load", () => {
   document.getElementById("create-btn").addEventListener("click", () => {
     const name = document.getElementById("name-input").value.trim();
     if (!name || !selectedClassId) return;
-    game = {
-      name,
-      classId: selectedClassId,
-      level: 1,
-      exp: 0,
-      ascendCount: 0,
-      gold: 0,
-      storyIndex: 0,
-    };
-    saveGame();
+    createNewGame(name, selectedClassId);
     showScreen("screen-menu");
     renderMenu();
   });
 
-  document.getElementById("adventure-btn").addEventListener("click", startStoryStage);
+  document.getElementById("stage-select-btn").addEventListener("click", () => {
+    renderStageSelect();
+    showScreen("screen-stage-select");
+  });
+  document.getElementById("stage-back-btn").addEventListener("click", () => {
+    showScreen("screen-menu");
+    renderMenu();
+  });
+
+  document.getElementById("shop-btn").addEventListener("click", () => {
+    renderShop();
+    showScreen("screen-shop");
+  });
+  document.getElementById("shop-back-btn").addEventListener("click", () => {
+    showScreen("screen-menu");
+    renderMenu();
+  });
+  document.getElementById("shop-tabs").addEventListener("click", (e) => {
+    if (e.target.tagName === "BUTTON") {
+      activeShopTab = e.target.dataset.tab;
+      renderShop();
+    }
+  });
+
+  document.getElementById("inventory-btn").addEventListener("click", () => {
+    renderInventory();
+    showScreen("screen-inventory");
+  });
+  document.getElementById("inventory-back-btn").addEventListener("click", () => {
+    showScreen("screen-menu");
+    renderMenu();
+  });
 
   document.getElementById("skills-btn").addEventListener("click", () => {
     const panel = document.getElementById("skills-panel");
@@ -464,8 +986,20 @@ window.addEventListener("load", () => {
 
   document.getElementById("skill-menu-btn").addEventListener("click", () => {
     const list = document.getElementById("battle-skill-list");
+    document.getElementById("battle-potion-list").classList.add("hidden");
     if (list.classList.contains("hidden")) {
       renderSkillList();
+      list.classList.remove("hidden");
+    } else {
+      list.classList.add("hidden");
+    }
+  });
+
+  document.getElementById("potion-menu-btn").addEventListener("click", () => {
+    const list = document.getElementById("battle-potion-list");
+    document.getElementById("battle-skill-list").classList.add("hidden");
+    if (list.classList.contains("hidden")) {
+      renderPotionList();
       list.classList.remove("hidden");
     } else {
       list.classList.add("hidden");
