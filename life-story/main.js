@@ -88,11 +88,17 @@ function buildContext(inputs) {
     siblingRelation: pickRandom(SIBLING_RELATIONS),
     sibling: pickRandom(NAME_POOLS.sibling),
     friend: c.friend || pickRandom(NAME_POOLS.friend),
+    friendTrait: pickRandom(FRIEND_TRAITS),
     lover: pickRandom(NAME_POOLS.lover),
+    loverTrait: pickRandom(LOVER_TRAITS),
     mentor: c.mentor || pickRandom(NAME_POOLS.mentor),
+    mentorTrait: pickRandom(MENTOR_TRAITS),
     enemy: c.enemy || pickRandom(ENEMY_NAMES),
+    enemyTrait: pickRandom(ENEMY_TRAITS),
     villain: c.villain || pickRandom(VILLAIN_NAMES),
+    villainTrait: pickRandom(VILLAIN_TRAITS),
     protectedPhrase: buildProtectedPhrase(inputs.routes),
+    payoffTarget: buildPayoffTarget(inputs.routes),
   };
 }
 
@@ -107,23 +113,24 @@ function conflictCountForLength(length) {
 
 function buildFillerText(style, given, targetGap) {
   const fullPool = STYLE_FILLERS[style];
-  let queue = shuffle(fullPool);
+  const windowSize = Math.max(1, fullPool.length - 1);
+  const recent = [];
   const lines = [];
   let length = 0;
-  let lastLine = null;
   let iterations = 0;
   while (length < targetGap && iterations < 500) {
-    if (queue.length === 0) {
-      queue = shuffle(fullPool);
-      if (lastLine && queue.length > 1 && queue[0](given) === lastLine) {
-        [queue[0], queue[1]] = [queue[1], queue[0]];
-      }
+    let candidates = fullPool.filter((fn) => !recent.includes(fn));
+    if (candidates.length === 0) {
+      recent.splice(0, recent.length - Math.floor(windowSize / 2));
+      candidates = fullPool.filter((fn) => !recent.includes(fn));
+      if (candidates.length === 0) candidates = fullPool;
     }
-    const fn = queue.shift();
+    const fn = pickRandom(candidates);
     const line = fn(given);
     lines.push(line);
     length += line.length;
-    lastLine = line;
+    recent.push(fn);
+    if (recent.length > windowSize) recent.shift();
     iterations++;
   }
   return lines;
@@ -165,6 +172,8 @@ function generateStory(inputs) {
   }
   pushAct(acts, "序幕・起點", openingParts);
 
+  const seedPayoff = pickRandom(SEED_PAYOFFS);
+
   const growthParts = [];
   if (config.chapters > 0) {
     const chapterPicks = pickRandomN(GENERIC_CHAPTERS, config.chapters);
@@ -176,16 +185,18 @@ function generateStory(inputs) {
   if (hasRoute("friend")) {
     growthParts.push(ROUTE_SCENES.friend[inputs.role][0](ctx));
   }
+  growthParts.push(seedPayoff.seed(ctx.given));
   pushAct(acts, "成長歲月", growthParts);
 
   const mentorPicks = MENTOR_LINES.slice(0, config.mentorLines);
-  pushAct(acts, "恩師引路", mentorPicks.map((fn) => fn(ctx.given, ctx.mentor)));
+  pushAct(acts, "恩師引路", mentorPicks.map((fn) => fn(ctx.given, ctx.mentor, ctx.mentorTrait)));
 
   const trialParts = [];
   if (hasRoute("nation")) {
     trialParts.push(...ROUTE_SCENES.nation[inputs.role].slice(0, config.scenes).map((fn) => fn(ctx)));
   }
   trialParts.push(...CONFLICT_SCENES.slice(0, conflictCountForLength(inputs.length)).map((fn) => fn(ctx)));
+  trialParts.push(seedPayoff.payoff(ctx.given, ctx.payoffTarget));
   if (hasRoute("friend")) {
     trialParts.push(...ROUTE_SCENES.friend[inputs.role].slice(1, config.scenes).map((fn) => fn(ctx)));
   }
