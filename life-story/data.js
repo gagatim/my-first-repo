@@ -17,14 +17,16 @@ const STYLES = [
 
 const TRAIT_OPTIONS = ["樂觀", "悲觀", "衝動", "冷靜", "浪漫", "現實", "固執", "隨和", "勇敢", "謹慎", "幽默風趣", "沉默寡言"];
 
-const LENGTH_OPTIONS = [500, 1000, 1500, 2000, 3000];
+const LENGTH_OPTIONS = [500, 1000, 1500, 2000, 3000, 5000, 10000];
 
 const LENGTH_CONFIG = {
-  500: { scenes: 1, mentorLines: 1, reflection: false, chapters: 0 },
-  1000: { scenes: 2, mentorLines: 1, reflection: false, chapters: 1 },
-  1500: { scenes: 2, mentorLines: 1, reflection: true, chapters: 2 },
-  2000: { scenes: 3, mentorLines: 2, reflection: true, chapters: 3 },
-  3000: { scenes: 4, mentorLines: 2, reflection: true, chapters: 5 },
+  500: { scenes: 1, mentorLines: 1, reflection: false, chapters: 0, bridges: 0 },
+  1000: { scenes: 2, mentorLines: 1, reflection: false, chapters: 1, bridges: 1 },
+  1500: { scenes: 3, mentorLines: 2, reflection: true, chapters: 2, bridges: 2 },
+  2000: { scenes: 4, mentorLines: 2, reflection: true, chapters: 3, bridges: 3 },
+  3000: { scenes: 5, mentorLines: 3, reflection: true, chapters: 5, bridges: 4 },
+  5000: { scenes: 5, mentorLines: 3, reflection: true, chapters: 8, bridges: 6 },
+  10000: { scenes: 5, mentorLines: 3, reflection: true, chapters: 10, bridges: 6 },
 };
 
 const GENERIC_CHAPTERS = [
@@ -36,6 +38,28 @@ const GENERIC_CHAPTERS = [
   (given) => `${given}始終保有一項不為人知的小嗜好，那是${given}在忙碌生活裡，留給自己喘息的一方天地。`,
   (given) => `曾有那麼一次意外的轉折，徹底改變了${given}看待世界的方式，從此${given}學會了用更柔軟的眼光看待身邊的人事物。`,
   (given) => `${given}始終相信，人生沒有白走的路，每一次跌倒與重新站起，都在悄悄雕刻著更完整的自己。`,
+  (given) => `${given}也曾有過一段迷失自己的時期，分不清究竟是為了誰而活，直到某個平凡的清晨，才終於想通了一些事。`,
+  (given) => `旁人眼中，${given}的人生或許稱不上轟轟烈烈，但${given}始終認為，能夠問心無愧地走完每一步，本身就是一種了不起的成就。`,
+];
+
+const ENEMY_NAMES = ["趙志遠", "馬立群", "宋文彥", "胡家明", "秦少華", "尹哲宇"];
+const VILLAIN_NAMES = ["黑無常", "血手", "毒蠍", "冷面刀", "夜梟", "獨眼狼"];
+
+function buildProtectedPhrase(routes) {
+  const parts = [];
+  if (routes.includes("family")) parts.push("家人");
+  if (routes.includes("friend")) parts.push("摯友");
+  if (routes.includes("love")) parts.push("摯愛之人");
+  if (parts.length === 0) return "自己珍視的一切";
+  if (parts.length === 1) return parts[0];
+  return parts.slice(0, -1).join("、") + "與" + parts[parts.length - 1];
+}
+
+const CONFLICT_SCENES = [
+  (ctx) => `平靜的日子並沒有一直持續，${ctx.enemy}的出現，打破了原本安穩的生活步調，也讓${ctx.given}第一次真切感受到，人心之複雜遠比想像中更深。`,
+  (ctx) => `${ctx.villain}在暗中布下的局，讓${ctx.given}一度陷入前所未有的危機，那段時間，${ctx.given}幾乎要失去對這個世界的信任。`,
+  (ctx) => `為了守護${ctx.protectedPhrase}，${ctx.given}選擇正面迎向這場風暴，即使代價慘重，也未曾有一刻退縮。`,
+  (ctx) => `這場風波過後，${ctx.given}才明白，真正的考驗，從來不是打敗敵人，而是在黑暗中，依然選擇不變成自己曾經厭惡的模樣。`,
 ];
 
 const STYLE_FILLERS = {
@@ -163,12 +187,14 @@ const ROUTE_SCENES = {
       (ctx) => `長大後的${ctx.given}，毅然放下了原本安穩的人生規劃，選擇投身守護家園的行列。第一次直面危機時，${ctx.given}也曾害怕過，但看著身後那些仰賴自己的面孔，終究還是咬牙站穩了腳步。`,
       (ctx) => `這條路遠比想像中艱難，${ctx.given}曾在最深的夜裡，獨自吞下傷痛與孤獨，也曾為了守住某個約定，捨棄了原本觸手可及的幸福，但每當想起這片土地上人們安穩的笑容，${ctx.given}便覺得，這一切都值得。`,
       (ctx) => `多年的堅持，讓${ctx.given}明白，所謂家國，從來不是一句空洞的口號，而是無數個像${ctx.given}這樣的人，用青春與堅持，一點一滴築起的安穩日常。`,
+      (ctx) => `${ctx.given}始終覺得，所謂守護，從來不是圖什麼回報，而是一種刻在骨子裡的責任感——即使沒有人看見，${ctx.given}也願意做那個在暗處撐住一切的人。`,
     ],
     receive: [
       (ctx) => `${ctx.year}年，${ctx.given}出生於${ctx.country}，那已是一個相對安穩的年代。年幼的${ctx.given}並不知道，這份平凡的安穩，其實是無數前人用生命換來的禮物。`,
       (ctx) => `隨著年歲漸長，${ctx.given}開始從課本與長輩口中，一點一滴拼湊出這片土地曾經歷過的艱辛歲月，心裡對那些素未謀面的前人，湧起深深的敬意與感激。`,
       (ctx) => `也曾有那麼一段時間，${ctx.given}被眼前的現實磨去了感恩的心，直到某次經歷，讓${ctx.given}重新想起這份平安得來不易，才又找回了最初的觸動。`,
       (ctx) => `${ctx.given}終於明白，感恩不該只放在心裡，於是決定用自己的方式，去守護、去回饋這片曾經默默守護著自己的土地。`,
+      (ctx) => `${ctx.given}漸漸懂得，感恩若只停留在言語，終究是空的；唯有親身去實踐、去付出，才對得起那些從未謀面卻默默守護過${ctx.given}的人。`,
     ],
   },
   family: {
@@ -177,12 +203,14 @@ const ROUTE_SCENES = {
       (ctx) => `長大後，${ctx.given}原本也有機會離開家鄉，追逐屬於自己的人生，卻在看見父母日漸佝僂的背影後，選擇留了下來，把那些外面世界的可能，都輕輕放下了。`,
       (ctx) => `這些年，${ctx.given}為了照顧父母，錯過了不少屬於自己的機會，也曾在深夜裡感到疲憊與委屈，但只要看見家人安穩的笑容，那些辛苦便顯得微不足道。`,
       (ctx) => `${ctx.given}用自己的方式，一肩扛起了家的重量，讓父母的晚年不再孤單，也讓${ctx.siblingRelation}能夠安心地追逐自己的人生。`,
+      (ctx) => `有時候${ctx.given}也會問自己，這樣的犧牲值得嗎？但只要想起父母眼裡藏不住的欣慰，${ctx.given}便知道，這條路，自己從未走錯。`,
     ],
     receive: [
       (ctx) => `${ctx.given}出生在一個溫暖的家庭，父親${ctx.father}${ctx.fatherTrait}，母親${ctx.mother}${ctx.motherTrait}，還有${ctx.siblingRelation}${ctx.sibling}相伴左右，日子雖然平凡，卻充滿了踏實的幸福。`,
       (ctx) => `成長過程中，無論${ctx.given}做出什麼選擇，父母總是給予最大的支持與包容，讓${ctx.given}始終擁有勇敢嘗試的底氣。`,
       (ctx) => `也曾有徬徨無助的時刻，是家人不曾間斷的陪伴，一次次將${ctx.given}從低潮裡拉了回來，讓${ctx.given}重新相信自己值得被愛。`,
       (ctx) => `${ctx.given}漸漸明白，這份毫無保留的愛，正是自己一生中最珍貴的禮物，也讓${ctx.given}學會將這份溫暖，繼續傳遞下去。`,
+      (ctx) => `${ctx.given}漸漸懂得，家人給的愛從來不求回報，但正因如此，${ctx.given}更想用自己的方式，把這份溫暖好好傳下去。`,
     ],
   },
   friend: {
@@ -191,12 +219,14 @@ const ROUTE_SCENES = {
       (ctx) => `${ctx.given}始終把這位朋友的事放在心上，只要對方遇上難處，${ctx.given}總是二話不說地站出來，即使犧牲自己的時間與利益，也在所不惜。`,
       (ctx) => `曾經有一次，${ctx.given}為了守護這段情誼，付出了極大的代價，甚至一度不被理解，但${ctx.given}從未後悔過當初的選擇。`,
       (ctx) => `多年過去，這段情誼非但沒有淡去，反而在歲月的沉澱下變得更加深厚，兩人都明白，彼此早已是生命中密不可分的存在。`,
+      (ctx) => `${ctx.given}始終相信，真正的情誼禁得起時間與利益的考驗，而這份信念，也讓${ctx.given}在往後的人生裡，多了一份底氣去對人真心。`,
     ],
     receive: [
       (ctx) => `在${ctx.given}最不知所措的那段日子裡，${ctx.friend}悄悄走進了${ctx.given}的生命，成了往後歲月裡最重要的陪伴。`,
       (ctx) => `每當${ctx.given}遇上難題，這位朋友總會毫不猶豫地伸出援手，從不計較付出與回報，這份情誼漸漸成了${ctx.given}最堅實的依靠。`,
       (ctx) => `${ctx.given}也曾因為自身的自卑與猶豫，一度想要遠離這段關係，所幸對方始終不離不棄，才讓兩人的情誼撐過了那段動盪。`,
       (ctx) => `${ctx.given}終於懂得，這份友情給予的，早已不只是陪伴，而是一份讓自己敢於面對世界的勇氣。`,
+      (ctx) => `${ctx.given}明白，不是每個人都有幸遇到這樣的知己，而${ctx.given}何其幸運，能被這樣毫無保留地在乎著。`,
     ],
   },
   love: {
@@ -205,14 +235,25 @@ const ROUTE_SCENES = {
       (ctx) => `為了這段感情，${ctx.given}付出了全部的真心，即使生活偶有摩擦與誤會，${ctx.given}也總是願意先低頭，只為守住兩人之間得來不易的默契。`,
       (ctx) => `這段感情曾經歷過幾次嚴峻的考驗，${ctx.given}也曾徬徨、曾受傷，卻始終沒有選擇放手，因為${ctx.given}深知，值得的感情，本就值得用心經營。`,
       (ctx) => `歲月流轉，${ctx.given}與那個人之間的情感，早已超越了單純的心動，變成了一種深植於生命裡、無需言語的默契與依賴。`,
+      (ctx) => `${ctx.given}漸漸明白，愛一個人從來不是要對方變成誰，而是願意陪著對方，一起成為更好的自己。`,
     ],
     receive: [
       (ctx) => `${ctx.lover}的出現，如同一道溫柔的光，悄悄照進了${ctx.given}原本平淡的生活裡，讓${ctx.given}第一次真切地感受到，被人珍視是什麼感覺。`,
       (ctx) => `${ctx.given}在這段關係裡，漸漸卸下了心防，學會了依賴，也學會了如何真誠地去愛與被愛。`,
       (ctx) => `即使偶有低潮與不安，對方始終給予${ctx.given}足夠的耐心與包容，讓${ctx.given}明白，這份感情經得起時間的考驗。`,
       (ctx) => `${ctx.given}終於相信，自己值得被這樣深深地愛著，而這份被愛的勇氣，也讓${ctx.given}成為了更完整的自己。`,
+      (ctx) => `${ctx.given}終於懂得，被愛從來不是理所當然，而${ctx.given}很慶幸，自己有勇氣接住了這份得來不易的幸福。`,
     ],
   },
+};
+
+const BRIDGE_LINES = {
+  "family,nation": (given) => `守護家國的信念，某種程度上，也是源自於${given}想要保護家人的初衷。`,
+  "friend,nation": (given) => `並肩守護家園的過程中，那些出生入死的夥伴，也漸漸成了${given}生命裡無可取代的知己。`,
+  "love,nation": (given) => `在守護家國的路上，也是那個人的等待與牽掛，讓${given}在最艱難的時刻，始終有勇氣走下去。`,
+  "family,friend": (given) => `家庭教會${given}的體貼與包容，也悄悄延伸到了${given}對待朋友的方式裡。`,
+  "family,love": (given) => `或許是家庭給予的安全感，讓${given}在愛情裡，也格外懂得如何付出與接納。`,
+  "friend,love": (given) => `那位朋友，始終是${given}感情路上最堅定的後盾，陪著${given}一起走過那些患得患失的日子。`,
 };
 
 const REFLECTION_LINES = {
