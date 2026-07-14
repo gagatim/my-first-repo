@@ -55,9 +55,31 @@ function buildProtectedPhrase(routes) {
   return parts.slice(0, -1).join("、") + "與" + parts[parts.length - 1];
 }
 
+function buildPayoffTarget(routes) {
+  if (routes.includes("love")) return "身邊那個人";
+  if (routes.includes("friend")) return "這位朋友";
+  if (routes.includes("family")) return "家人";
+  return "自己珍視的一切";
+}
+
+const SEED_PAYOFFS = [
+  {
+    seed: (given) => `${given}始終記得，父親曾在很小的時候說過：「做人，寧可自己吃虧，也不要虧待了別人。」這句話，${given}一直記到現在。`,
+    payoff: (given, target) => `多年以後面對抉擇時，${given}腦海裡浮現的，竟是父親當年那句「寧可自己吃虧」的叮嚀——也正是這句話，讓${given}最終選擇了不辜負${target}。`,
+  },
+  {
+    seed: (given) => `童年時一場突如其來的意外，讓${given}第一次體會到失去的滋味，也讓${given}打從心底明白，能陪在身邊的人，一刻都不能被浪費。`,
+    payoff: (given, target) => `也正是童年那場意外留下的印記，讓${given}在${target}最需要自己的那一刻，義無反顧，一秒都沒有猶豫。`,
+  },
+  {
+    seed: (given) => `${given}始終忘不了求學時期那次徹底的失敗，那種被全世界否定的滋味，讓${given}暗自發誓，絕不再讓重要的人，因為自己而失望。`,
+    payoff: (given, target) => `正因為那次刻骨銘心的失敗，讓${given}在${target}面前，選擇了拚盡全力，也不願再重蹈當年的覆轍。`,
+  },
+];
+
 const CONFLICT_SCENES = [
-  (ctx) => `平靜的日子並沒有一直持續，${ctx.enemy}的出現，打破了原本安穩的生活步調，也讓${ctx.given}第一次真切感受到，人心之複雜遠比想像中更深。`,
-  (ctx) => `${ctx.villain}在暗中布下的局，讓${ctx.given}一度陷入前所未有的危機，那段時間，${ctx.given}幾乎要失去對這個世界的信任。`,
+  (ctx) => `平靜的日子並沒有一直持續，${ctx.enemy}的出現，打破了原本安穩的生活步調——此人${ctx.enemyTrait}，也讓${ctx.given}第一次真切感受到，人心之複雜遠比想像中更深。`,
+  (ctx) => `${ctx.villain}在暗中布下的局，讓${ctx.given}一度陷入前所未有的危機，那段時間，${ctx.given}幾乎要失去對這個世界的信任——畢竟對方${ctx.villainTrait}。`,
   (ctx) => `為了守護${ctx.protectedPhrase}，${ctx.given}選擇正面迎向這場風暴，即使代價慘重，也未曾有一刻退縮。`,
   (ctx) => `這場風波過後，${ctx.given}才明白，真正的考驗，從來不是打敗敵人，而是在黑暗中，依然選擇不變成自己曾經厭惡的模樣。`,
 ];
@@ -168,6 +190,11 @@ const SIBLING_RELATIONS = ["哥哥", "姊姊", "弟弟", "妹妹"];
 
 const FATHER_TRAITS = ["沉默寡言，卻總在背後默默付出", "為人嚴厲，卻深愛著孩子，只是不輕易表露", "話雖不多，肩膀卻永遠是最溫暖的依靠"];
 const MOTHER_TRAITS = ["溫柔細膩，總能看穿孩子的心事", "堅強獨立，一手撐起了整個家", "笑容溫暖如陽光，是全家人的定心丸"];
+const FRIEND_TRAITS = ["個性直爽，講義氣，眼裡揉不下一粒沙", "看似大剌剌，心思卻異常細膩", "話不多，但總能在關鍵時刻說中重點"];
+const LOVER_TRAITS = ["溫柔體貼，總能一眼看穿我的心事", "個性獨立要強，卻在我面前展現最柔軟的一面", "笑起來帶點傻氣，卻是我見過最真誠的人"];
+const MENTOR_TRAITS = ["治學嚴謹，卻對學生疼愛有加", "話語不多，一個眼神就足以點醒我", "看似不苟言笑，實則刀子嘴豆腐心"];
+const ENEMY_TRAITS = ["野心勃勃，眼裡容不下任何阻礙", "表面客氣，骨子裡卻算計著每一步", "手段狠辣，卻極少在人前顯露真實情緒"];
+const VILLAIN_TRAITS = ["心狠手辣，行事從不留餘地", "深不可測，沒人猜得透他真正的目的", "冷酷無情，卻有一套自己扭曲的邏輯"];
 
 const PERSONALITY_LINES = {
   E: (given) => `${given}生性外向，總是主動與人交流，身邊很少缺少熱鬧的陪伴。`,
@@ -175,7 +202,7 @@ const PERSONALITY_LINES = {
 };
 
 const MENTOR_LINES = [
-  (given, mentor) => `成長路上，恩師${mentor}的教導成了${given}心中最亮的一盞燈，每逢迷惘，總會想起那句諄諄叮嚀。`,
+  (given, mentor, mentorTrait) => `成長路上，恩師${mentor}——${mentorTrait}——的教導成了${given}心中最亮的一盞燈，每逢迷惘，總會想起那句諄諄叮嚀。`,
   (given) => `${given}始終記得，若不是當年恩師的傾囊相授，自己絕不會走到今天這一步。`,
   (given) => `恩師是${given}人生中最重要的引路人，那份師徒情誼，比任何言語都更深刻。`,
 ];
@@ -215,14 +242,14 @@ const ROUTE_SCENES = {
   },
   friend: {
     give: [
-      (ctx) => `人生某個平凡的日子，${ctx.given}遇見了${ctx.friend}，兩人個性雖然不盡相同，卻莫名地一見如故，很快就成了無話不談的知己。`,
+      (ctx) => `人生某個平凡的日子，${ctx.given}遇見了${ctx.friend}——${ctx.friendTrait}，兩人個性雖然不盡相同，卻莫名地一見如故，很快就成了無話不談的知己。`,
       (ctx) => `${ctx.given}始終把這位朋友的事放在心上，只要對方遇上難處，${ctx.given}總是二話不說地站出來，即使犧牲自己的時間與利益，也在所不惜。`,
       (ctx) => `曾經有一次，${ctx.given}為了守護這段情誼，付出了極大的代價，甚至一度不被理解，但${ctx.given}從未後悔過當初的選擇。`,
       (ctx) => `多年過去，這段情誼非但沒有淡去，反而在歲月的沉澱下變得更加深厚，兩人都明白，彼此早已是生命中密不可分的存在。`,
       (ctx) => `${ctx.given}始終相信，真正的情誼禁得起時間與利益的考驗，而這份信念，也讓${ctx.given}在往後的人生裡，多了一份底氣去對人真心。`,
     ],
     receive: [
-      (ctx) => `在${ctx.given}最不知所措的那段日子裡，${ctx.friend}悄悄走進了${ctx.given}的生命，成了往後歲月裡最重要的陪伴。`,
+      (ctx) => `在${ctx.given}最不知所措的那段日子裡，${ctx.friend}——${ctx.friendTrait}——悄悄走進了${ctx.given}的生命，成了往後歲月裡最重要的陪伴。`,
       (ctx) => `每當${ctx.given}遇上難題，這位朋友總會毫不猶豫地伸出援手，從不計較付出與回報，這份情誼漸漸成了${ctx.given}最堅實的依靠。`,
       (ctx) => `${ctx.given}也曾因為自身的自卑與猶豫，一度想要遠離這段關係，所幸對方始終不離不棄，才讓兩人的情誼撐過了那段動盪。`,
       (ctx) => `${ctx.given}終於懂得，這份友情給予的，早已不只是陪伴，而是一份讓自己敢於面對世界的勇氣。`,
@@ -231,14 +258,14 @@ const ROUTE_SCENES = {
   },
   love: {
     give: [
-      (ctx) => `在一個意想不到的時刻，${ctx.given}遇見了${ctx.lover}，兩人四目相對的瞬間，${ctx.given}便隱約明白，這將是一段刻骨銘心的緣分。`,
+      (ctx) => `在一個意想不到的時刻，${ctx.given}遇見了${ctx.lover}——${ctx.loverTrait}，兩人四目相對的瞬間，${ctx.given}便隱約明白，這將是一段刻骨銘心的緣分。`,
       (ctx) => `為了這段感情，${ctx.given}付出了全部的真心，即使生活偶有摩擦與誤會，${ctx.given}也總是願意先低頭，只為守住兩人之間得來不易的默契。`,
       (ctx) => `這段感情曾經歷過幾次嚴峻的考驗，${ctx.given}也曾徬徨、曾受傷，卻始終沒有選擇放手，因為${ctx.given}深知，值得的感情，本就值得用心經營。`,
       (ctx) => `歲月流轉，${ctx.given}與那個人之間的情感，早已超越了單純的心動，變成了一種深植於生命裡、無需言語的默契與依賴。`,
       (ctx) => `${ctx.given}漸漸明白，愛一個人從來不是要對方變成誰，而是願意陪著對方，一起成為更好的自己。`,
     ],
     receive: [
-      (ctx) => `${ctx.lover}的出現，如同一道溫柔的光，悄悄照進了${ctx.given}原本平淡的生活裡，讓${ctx.given}第一次真切地感受到，被人珍視是什麼感覺。`,
+      (ctx) => `${ctx.lover}——${ctx.loverTrait}——的出現，如同一道溫柔的光，悄悄照進了${ctx.given}原本平淡的生活裡，讓${ctx.given}第一次真切地感受到，被人珍視是什麼感覺。`,
       (ctx) => `${ctx.given}在這段關係裡，漸漸卸下了心防，學會了依賴，也學會了如何真誠地去愛與被愛。`,
       (ctx) => `即使偶有低潮與不安，對方始終給予${ctx.given}足夠的耐心與包容，讓${ctx.given}明白，這份感情經得起時間的考驗。`,
       (ctx) => `${ctx.given}終於相信，自己值得被這樣深深地愛著，而這份被愛的勇氣，也讓${ctx.given}成為了更完整的自己。`,
