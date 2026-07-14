@@ -109,6 +109,20 @@ function generateStory(inputs) {
     }
   });
 
+  if (config.bridges > 0 && inputs.routes.length >= 2) {
+    const pairKeys = [];
+    for (let i = 0; i < inputs.routes.length; i++) {
+      for (let j = i + 1; j < inputs.routes.length; j++) {
+        const key = [inputs.routes[i], inputs.routes[j]].sort().join(",");
+        if (BRIDGE_LINES[key]) pairKeys.push(key);
+      }
+    }
+    const chosenBridges = pickRandomN(pairKeys, config.bridges);
+    if (chosenBridges.length > 0) {
+      acts.push({ title: "命運交織", text: chosenBridges.map((key) => BRIDGE_LINES[key](ctx.given)).join("") });
+    }
+  }
+
   const mentorPicks = MENTOR_LINES.slice(0, config.mentorLines);
   acts.push({ title: "恩師引路", text: mentorPicks.map((fn) => fn(ctx.given, ctx.mentor)).join("") });
 
