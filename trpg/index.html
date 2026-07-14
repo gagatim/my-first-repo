@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>冒險者傳說 - 網頁 TRPG</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app">
+    <section id="screen-create" class="screen">
+      <h1>⚔️ 建立你的角色</h1>
+      <input id="name-input" placeholder="輸入角色名稱" maxlength="8">
+      <div id="class-options" class="class-options"></div>
+      <button id="create-btn" disabled>開始冒險</button>
+    </section>
+
+    <section id="screen-menu" class="screen hidden">
+      <div class="char-card">
+        <div class="char-emoji" id="menu-emoji"></div>
+        <div class="char-info">
+          <h2 id="menu-name"></h2>
+          <p class="muted" id="menu-class"></p>
+          <div class="stat-row">
+            <span>HP</span>
+            <div class="bar"><div id="menu-hp-bar" class="bar-fill hp"></div></div>
+            <span id="menu-hp-text"></span>
+          </div>
+          <div class="stat-row">
+            <span>MP</span>
+            <div class="bar"><div id="menu-mp-bar" class="bar-fill mp"></div></div>
+            <span id="menu-mp-text"></span>
+          </div>
+          <div class="stat-row">
+            <span>EXP</span>
+            <div class="bar"><div id="menu-exp-bar" class="bar-fill exp"></div></div>
+            <span id="menu-exp-text"></span>
+          </div>
+          <div class="stat-grid" id="menu-stats"></div>
+          <p id="menu-gold-text"></p>
+        </div>
+      </div>
+      <div class="menu-actions">
+        <button id="adventure-btn">🗺️ 前進冒險</button>
+        <button id="skills-btn">📖 查看技能</button>
+        <button id="ascend-btn" class="hidden accent">✨ 轉升</button>
+        <button id="reset-btn" class="danger">🗑️ 重置角色</button>
+      </div>
+      <div id="skills-panel" class="panel hidden"></div>
+    </section>
+
+    <section id="screen-dialogue" class="screen hidden">
+      <div class="dialogue-box">
+        <p class="dialogue-speaker" id="dialogue-speaker"></p>
+        <p class="dialogue-text" id="dialogue-text"></p>
+        <button id="dialogue-next">繼續 ▶</button>
+      </div>
+    </section>
+
+    <section id="screen-battle" class="screen hidden">
+      <div class="battle-field">
+        <div class="combatant">
+          <div class="combatant-emoji" id="battle-player-emoji"></div>
+          <div class="combatant-name" id="battle-player-name"></div>
+          <div class="bar small"><div id="battle-player-hp" class="bar-fill hp"></div></div>
+          <div class="bar small"><div id="battle-player-mp" class="bar-fill mp"></div></div>
+        </div>
+        <div class="vs">VS</div>
+        <div class="combatant">
+          <div class="combatant-emoji" id="battle-monster-emoji"></div>
+          <div class="combatant-name" id="battle-monster-name"></div>
+          <div class="bar small"><div id="battle-monster-hp" class="bar-fill hp"></div></div>
+        </div>
+      </div>
+      <div class="battle-log" id="battle-log"></div>
+      <div class="battle-actions" id="battle-actions">
+        <button id="attack-btn">⚔️ 攻擊</button>
+        <button id="skill-menu-btn">✨ 技能</button>
+        <button id="flee-btn">🏃 逃跑</button>
+      </div>
+      <div class="battle-skill-list hidden" id="battle-skill-list"></div>
+      <button id="battle-continue-btn" class="hidden accent">繼續 ▶</button>
+    </section>
+  </div>
+
+  <script src="data.js"></script>
+  <script src="main.js"></script>
+</body>
+</html>
