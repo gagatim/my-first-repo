@@ -3,6 +3,7 @@ let selectedTraits = [];
 let selectedStyle = "warm";
 let selectedLength = 500;
 let lastInputs = null;
+let lastActs = null;
 
 function pickRandom(arr) {
   return arr[Math.floor(Math.random() * arr.length)];
@@ -16,6 +17,15 @@ function pickRandomN(arr, n) {
     picked.push(pool.splice(idx, 1)[0]);
   }
   return picked;
+}
+
+function shuffle(arr) {
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
 }
 
 function renderCountrySelect() {
@@ -66,48 +76,107 @@ function renderChips(containerId, options, selectedList, single) {
 }
 
 function buildContext(inputs) {
+  const c = inputs.customNames;
   return {
     given: "我",
     year: inputs.year,
     country: inputs.country,
-    father: pickRandom(NAME_POOLS.father),
-    mother: pickRandom(NAME_POOLS.mother),
+    father: c.father || pickRandom(NAME_POOLS.father),
+    mother: c.mother || pickRandom(NAME_POOLS.mother),
     fatherTrait: pickRandom(FATHER_TRAITS),
     motherTrait: pickRandom(MOTHER_TRAITS),
     siblingRelation: pickRandom(SIBLING_RELATIONS),
     sibling: pickRandom(NAME_POOLS.sibling),
-    friend: pickRandom(NAME_POOLS.friend),
+    friend: c.friend || pickRandom(NAME_POOLS.friend),
     lover: pickRandom(NAME_POOLS.lover),
-    mentor: pickRandom(NAME_POOLS.mentor),
+    mentor: c.mentor || pickRandom(NAME_POOLS.mentor),
+    enemy: c.enemy || pickRandom(ENEMY_NAMES),
+    villain: c.villain || pickRandom(VILLAIN_NAMES),
+    protectedPhrase: buildProtectedPhrase(inputs.routes),
   };
 }
 
 const ROUTE_LABELS = ROUTES.reduce((map, r) => ((map[r.id] = r.label), map), {});
 
+function conflictCountForLength(length) {
+  if (length >= 3000) return CONFLICT_SCENES.length;
+  if (length >= 1500) return 3;
+  if (length >= 1000) return 2;
+  return 1;
+}
+
+function buildFillerText(style, given, targetGap) {
+  const fullPool = STYLE_FILLERS[style];
+  let queue = shuffle(fullPool);
+  const lines = [];
+  let length = 0;
+  let lastLine = null;
+  let iterations = 0;
+  while (length < targetGap && iterations < 500) {
+    if (queue.length === 0) {
+      queue = shuffle(fullPool);
+      if (lastLine && queue.length > 1 && queue[0](given) === lastLine) {
+        [queue[0], queue[1]] = [queue[1], queue[0]];
+      }
+    }
+    const fn = queue.shift();
+    const line = fn(given);
+    lines.push(line);
+    length += line.length;
+    lastLine = line;
+    iterations++;
+  }
+  return lines.join("");
+}
+
 function generateStory(inputs) {
   const ctx = buildContext(inputs);
   const config = LENGTH_CONFIG[inputs.length];
   const acts = [];
+  const hasRoute = (id) => inputs.routes.includes(id);
 
   let opening = `我是${inputs.fullName}，${inputs.year}年出生於${inputs.country}。`;
   opening += PERSONALITY_LINES[inputs.personality](ctx.given);
   if (inputs.traits.length > 0) {
     opening += `個性${inputs.traits.join("、")}的${ctx.given}，從小便展現出與眾不同的一面。`;
   }
-  acts.push({ title: "序幕・初生", text: opening });
+  if (hasRoute("family")) {
+    opening += ROUTE_SCENES.family[inputs.role][0](ctx);
+  }
+  acts.push({ title: "序幕・起點", text: opening });
 
+  const growthParts = [];
   if (config.chapters > 0) {
     const chapterPicks = pickRandomN(GENERIC_CHAPTERS, config.chapters);
-    acts.push({ title: "成長歲月", text: chapterPicks.map((fn) => fn(ctx.given)).join("") });
+    growthParts.push(...chapterPicks.map((fn) => fn(ctx.given)));
+  }
+  if (hasRoute("family")) {
+    growthParts.push(...ROUTE_SCENES.family[inputs.role].slice(1, config.scenes).map((fn) => fn(ctx)));
+  }
+  if (hasRoute("friend")) {
+    growthParts.push(ROUTE_SCENES.friend[inputs.role][0](ctx));
+  }
+  if (growthParts.length > 0) {
+    acts.push({ title: "成長歲月", text: growthParts.join("") });
   }
 
-  const order = ["nation", "family", "friend", "love"];
-  order.forEach((routeId) => {
-    if (inputs.routes.includes(routeId)) {
-      const scenes = ROUTE_SCENES[routeId][inputs.role].slice(0, config.scenes);
-      acts.push({ title: `${ROUTE_LABELS[routeId]}羈絆`, text: scenes.map((fn) => fn(ctx)).join("") });
-    }
-  });
+  const mentorPicks = MENTOR_LINES.slice(0, config.mentorLines);
+  acts.push({ title: "恩師引路", text: mentorPicks.map((fn) => fn(ctx.given, ctx.mentor)).join("") });
+
+  const trialParts = [];
+  if (hasRoute("nation")) {
+    trialParts.push(...ROUTE_SCENES.nation[inputs.role].slice(0, config.scenes).map((fn) => fn(ctx)));
+  }
+  trialParts.push(...CONFLICT_SCENES.slice(0, conflictCountForLength(inputs.length)).map((fn) => fn(ctx)));
+  if (hasRoute("friend")) {
+    trialParts.push(...ROUTE_SCENES.friend[inputs.role].slice(1, config.scenes).map((fn) => fn(ctx)));
+  }
+  acts.push({ title: "命運與考驗", text: trialParts.join("") });
+
+  if (hasRoute("love")) {
+    const loveScenes = ROUTE_SCENES.love[inputs.role].slice(0, config.scenes);
+    acts.push({ title: "心之所向", text: loveScenes.map((fn) => fn(ctx)).join("") });
+  }
 
   if (config.bridges > 0 && inputs.routes.length >= 2) {
     const pairKeys = [];
@@ -123,21 +192,12 @@ function generateStory(inputs) {
     }
   }
 
-  const mentorPicks = MENTOR_LINES.slice(0, config.mentorLines);
-  acts.push({ title: "恩師引路", text: mentorPicks.map((fn) => fn(ctx.given, ctx.mentor)).join("") });
-
   const target = inputs.length;
-  const fillerPool = STYLE_FILLERS[inputs.style].slice();
   let currentLength = acts.reduce((sum, a) => sum + a.text.length, 0);
-  const fillerLines = [];
-  while (currentLength < target * 0.85 && fillerPool.length > 0) {
-    const idx = Math.floor(Math.random() * fillerPool.length);
-    const line = fillerPool.splice(idx, 1)[0](ctx.given);
-    fillerLines.push(line);
-    currentLength += line.length;
-  }
-  if (fillerLines.length > 0) {
-    acts.push({ title: "日常剪影", text: fillerLines.join("") });
+  const gap = target * 0.85 - currentLength;
+  if (gap > 0) {
+    const fillerText = buildFillerText(inputs.style, ctx.given, gap);
+    if (fillerText) acts.push({ title: "日常剪影", text: fillerText });
   }
 
   let epilogue = "";
@@ -171,10 +231,16 @@ function readInputs() {
     routes: selectedRoutes.slice(),
     style: selectedStyle,
     length: selectedLength,
+    customNames: {
+      father: document.getElementById("custom-father").value.trim(),
+      mother: document.getElementById("custom-mother").value.trim(),
+      friend: document.getElementById("custom-friend").value.trim(),
+      mentor: document.getElementById("custom-mentor").value.trim(),
+      enemy: document.getElementById("custom-enemy").value.trim(),
+      villain: document.getElementById("custom-villain").value.trim(),
+    },
   };
 }
-
-let lastActs = null;
 
 function escapeHtml(str) {
   const div = document.createElement("div");

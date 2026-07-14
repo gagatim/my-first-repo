@@ -17,14 +17,16 @@ const STYLES = [
 
 const TRAIT_OPTIONS = ["樂觀", "悲觀", "衝動", "冷靜", "浪漫", "現實", "固執", "隨和", "勇敢", "謹慎", "幽默風趣", "沉默寡言"];
 
-const LENGTH_OPTIONS = [500, 1000, 1500, 2000, 3000];
+const LENGTH_OPTIONS = [500, 1000, 1500, 2000, 3000, 5000, 10000];
 
 const LENGTH_CONFIG = {
   500: { scenes: 1, mentorLines: 1, reflection: false, chapters: 0, bridges: 0 },
   1000: { scenes: 2, mentorLines: 1, reflection: false, chapters: 1, bridges: 1 },
-  1500: { scenes: 3, mentorLines: 1, reflection: true, chapters: 2, bridges: 1 },
-  2000: { scenes: 4, mentorLines: 2, reflection: true, chapters: 3, bridges: 2 },
-  3000: { scenes: 5, mentorLines: 2, reflection: true, chapters: 5, bridges: 2 },
+  1500: { scenes: 3, mentorLines: 2, reflection: true, chapters: 2, bridges: 2 },
+  2000: { scenes: 4, mentorLines: 2, reflection: true, chapters: 3, bridges: 3 },
+  3000: { scenes: 5, mentorLines: 3, reflection: true, chapters: 5, bridges: 4 },
+  5000: { scenes: 5, mentorLines: 3, reflection: true, chapters: 8, bridges: 6 },
+  10000: { scenes: 5, mentorLines: 3, reflection: true, chapters: 10, bridges: 6 },
 };
 
 const GENERIC_CHAPTERS = [
@@ -36,6 +38,28 @@ const GENERIC_CHAPTERS = [
   (given) => `${given}始終保有一項不為人知的小嗜好，那是${given}在忙碌生活裡，留給自己喘息的一方天地。`,
   (given) => `曾有那麼一次意外的轉折，徹底改變了${given}看待世界的方式，從此${given}學會了用更柔軟的眼光看待身邊的人事物。`,
   (given) => `${given}始終相信，人生沒有白走的路，每一次跌倒與重新站起，都在悄悄雕刻著更完整的自己。`,
+  (given) => `${given}也曾有過一段迷失自己的時期，分不清究竟是為了誰而活，直到某個平凡的清晨，才終於想通了一些事。`,
+  (given) => `旁人眼中，${given}的人生或許稱不上轟轟烈烈，但${given}始終認為，能夠問心無愧地走完每一步，本身就是一種了不起的成就。`,
+];
+
+const ENEMY_NAMES = ["趙志遠", "馬立群", "宋文彥", "胡家明", "秦少華", "尹哲宇"];
+const VILLAIN_NAMES = ["黑無常", "血手", "毒蠍", "冷面刀", "夜梟", "獨眼狼"];
+
+function buildProtectedPhrase(routes) {
+  const parts = [];
+  if (routes.includes("family")) parts.push("家人");
+  if (routes.includes("friend")) parts.push("摯友");
+  if (routes.includes("love")) parts.push("摯愛之人");
+  if (parts.length === 0) return "自己珍視的一切";
+  if (parts.length === 1) return parts[0];
+  return parts.slice(0, -1).join("、") + "與" + parts[parts.length - 1];
+}
+
+const CONFLICT_SCENES = [
+  (ctx) => `平靜的日子並沒有一直持續，${ctx.enemy}的出現，打破了原本安穩的生活步調，也讓${ctx.given}第一次真切感受到，人心之複雜遠比想像中更深。`,
+  (ctx) => `${ctx.villain}在暗中布下的局，讓${ctx.given}一度陷入前所未有的危機，那段時間，${ctx.given}幾乎要失去對這個世界的信任。`,
+  (ctx) => `為了守護${ctx.protectedPhrase}，${ctx.given}選擇正面迎向這場風暴，即使代價慘重，也未曾有一刻退縮。`,
+  (ctx) => `這場風波過後，${ctx.given}才明白，真正的考驗，從來不是打敗敵人，而是在黑暗中，依然選擇不變成自己曾經厭惡的模樣。`,
 ];
 
 const STYLE_FILLERS = {
