@@ -126,7 +126,28 @@ function buildFillerText(style, given, targetGap) {
     lastLine = line;
     iterations++;
   }
-  return lines.join("");
+  return lines;
+}
+
+function chunkByLength(parts, targetLen) {
+  targetLen = targetLen || 150;
+  const paragraphs = [];
+  let current = "";
+  parts.forEach((part) => {
+    if (current && current.length + part.length > targetLen) {
+      paragraphs.push(current);
+      current = part;
+    } else {
+      current += part;
+    }
+  });
+  if (current) paragraphs.push(current);
+  return paragraphs;
+}
+
+function pushAct(acts, title, parts) {
+  if (parts.length === 0) return;
+  acts.push({ title, paragraphs: chunkByLength(parts) });
 }
 
 function generateStory(inputs) {
@@ -135,15 +156,14 @@ function generateStory(inputs) {
   const acts = [];
   const hasRoute = (id) => inputs.routes.includes(id);
 
-  let opening = `我是${inputs.fullName}，${inputs.year}年出生於${inputs.country}。`;
-  opening += PERSONALITY_LINES[inputs.personality](ctx.given);
+  const openingParts = [`我是${inputs.fullName}，${inputs.year}年出生於${inputs.country}。` + PERSONALITY_LINES[inputs.personality](ctx.given)];
   if (inputs.traits.length > 0) {
-    opening += `個性${inputs.traits.join("、")}的${ctx.given}，從小便展現出與眾不同的一面。`;
+    openingParts.push(`個性${inputs.traits.join("、")}的${ctx.given}，從小便展現出與眾不同的一面。`);
   }
   if (hasRoute("family")) {
-    opening += ROUTE_SCENES.family[inputs.role][0](ctx);
+    openingParts.push(ROUTE_SCENES.family[inputs.role][0](ctx));
   }
-  acts.push({ title: "序幕・起點", text: opening });
+  pushAct(acts, "序幕・起點", openingParts);
 
   const growthParts = [];
   if (config.chapters > 0) {
@@ -156,12 +176,10 @@ function generateStory(inputs) {
   if (hasRoute("friend")) {
     growthParts.push(ROUTE_SCENES.friend[inputs.role][0](ctx));
   }
-  if (growthParts.length > 0) {
-    acts.push({ title: "成長歲月", text: growthParts.join("") });
-  }
+  pushAct(acts, "成長歲月", growthParts);
 
   const mentorPicks = MENTOR_LINES.slice(0, config.mentorLines);
-  acts.push({ title: "恩師引路", text: mentorPicks.map((fn) => fn(ctx.given, ctx.mentor)).join("") });
+  pushAct(acts, "恩師引路", mentorPicks.map((fn) => fn(ctx.given, ctx.mentor)));
 
   const trialParts = [];
   if (hasRoute("nation")) {
@@ -171,11 +189,11 @@ function generateStory(inputs) {
   if (hasRoute("friend")) {
     trialParts.push(...ROUTE_SCENES.friend[inputs.role].slice(1, config.scenes).map((fn) => fn(ctx)));
   }
-  acts.push({ title: "命運與考驗", text: trialParts.join("") });
+  pushAct(acts, "命運與考驗", trialParts);
 
   if (hasRoute("love")) {
     const loveScenes = ROUTE_SCENES.love[inputs.role].slice(0, config.scenes);
-    acts.push({ title: "心之所向", text: loveScenes.map((fn) => fn(ctx)).join("") });
+    pushAct(acts, "心之所向", loveScenes.map((fn) => fn(ctx)));
   }
 
   if (config.bridges > 0 && inputs.routes.length >= 2) {
@@ -187,24 +205,21 @@ function generateStory(inputs) {
       }
     }
     const chosenBridges = pickRandomN(pairKeys, config.bridges);
-    if (chosenBridges.length > 0) {
-      acts.push({ title: "命運交織", text: chosenBridges.map((key) => BRIDGE_LINES[key](ctx.given)).join("") });
-    }
+    pushAct(acts, "命運交織", chosenBridges.map((key) => BRIDGE_LINES[key](ctx.given)));
   }
 
   const target = inputs.length;
-  let currentLength = acts.reduce((sum, a) => sum + a.text.length, 0);
+  const currentLength = acts.reduce((sum, a) => sum + a.paragraphs.join("").length, 0);
   const gap = target * 0.85 - currentLength;
   if (gap > 0) {
-    const fillerText = buildFillerText(inputs.style, ctx.given, gap);
-    if (fillerText) acts.push({ title: "日常剪影", text: fillerText });
+    pushAct(acts, "日常剪影", buildFillerText(inputs.style, ctx.given, gap));
   }
 
-  let epilogue = "";
-  if (config.reflection) epilogue += REFLECTION_LINES[inputs.style](ctx.given);
-  epilogue += STYLE_TRANSITIONS[inputs.style](ctx.given);
-  epilogue += pickRandom(STYLE_ENDINGS[inputs.style])(ctx.given);
-  acts.push({ title: "尾聲", text: epilogue });
+  const epilogueParts = [];
+  if (config.reflection) epilogueParts.push(REFLECTION_LINES[inputs.style](ctx.given));
+  epilogueParts.push(STYLE_TRANSITIONS[inputs.style](ctx.given));
+  epilogueParts.push(pickRandom(STYLE_ENDINGS[inputs.style])(ctx.given));
+  pushAct(acts, "尾聲", epilogueParts);
 
   return acts;
 }
@@ -258,13 +273,13 @@ function renderStory(inputs) {
       (act, i) => `
         <div class="act">
           <div class="act-title"><span class="act-num">第${i + 1}幕</span>${escapeHtml(act.title)}</div>
-          <p class="act-text">${escapeHtml(act.text)}</p>
+          ${act.paragraphs.map((p) => `<p class="act-text">${escapeHtml(p)}</p>`).join("")}
         </div>
       `
     )
     .join("");
 
-  const totalLen = acts.reduce((sum, a) => sum + a.text.length, 0);
+  const totalLen = acts.reduce((sum, a) => sum + a.paragraphs.join("").length, 0);
   document.getElementById("char-count").textContent = `（共 ${totalLen} 字）`;
   document.getElementById("result-section").classList.remove("hidden");
   document.getElementById("result-section").scrollIntoView({ behavior: "smooth", block: "start" });
@@ -300,7 +315,7 @@ window.addEventListener("load", () => {
 
   document.getElementById("copy-btn").addEventListener("click", () => {
     if (!lastActs) return;
-    const text = lastActs.map((act, i) => `【第${i + 1}幕・${act.title}】\n${act.text}`).join("\n\n");
+    const text = lastActs.map((act, i) => `【第${i + 1}幕・${act.title}】\n${act.paragraphs.join("\n\n")}`).join("\n\n");
     navigator.clipboard.writeText(text).then(() => {
       const btn = document.getElementById("copy-btn");
       const original = btn.textContent;
