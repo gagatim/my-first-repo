@@ -1,10 +1,21 @@
 let selectedRoutes = [];
 let selectedTraits = [];
 let selectedStyle = "warm";
+let selectedLength = 500;
 let lastInputs = null;
 
 function pickRandom(arr) {
   return arr[Math.floor(Math.random() * arr.length)];
+}
+
+function pickRandomN(arr, n) {
+  const pool = arr.slice();
+  const picked = [];
+  for (let i = 0; i < n && pool.length > 0; i++) {
+    const idx = Math.floor(Math.random() * pool.length);
+    picked.push(pool.splice(idx, 1)[0]);
+  }
+  return picked;
 }
 
 function renderCountrySelect() {
@@ -12,6 +23,14 @@ function renderCountrySelect() {
   select.innerHTML = COUNTRIES.map((c) => `<option value="${c}">${c}</option>`).join("");
   select.addEventListener("change", () => {
     document.getElementById("country-custom").classList.toggle("hidden", select.value !== "其他");
+  });
+}
+
+function renderLengthSelect() {
+  const select = document.getElementById("length-select");
+  select.innerHTML = LENGTH_OPTIONS.map((len) => `<option value="${len}">${len} 字</option>`).join("");
+  select.addEventListener("change", () => {
+    selectedLength = parseInt(select.value, 10);
   });
 }
 
@@ -48,11 +67,14 @@ function renderChips(containerId, options, selectedList, single) {
 
 function buildContext(inputs) {
   return {
-    name: inputs.name,
+    given: inputs.given,
     year: inputs.year,
     country: inputs.country,
     father: pickRandom(NAME_POOLS.father),
     mother: pickRandom(NAME_POOLS.mother),
+    fatherTrait: pickRandom(FATHER_TRAITS),
+    motherTrait: pickRandom(MOTHER_TRAITS),
+    siblingRelation: pickRandom(SIBLING_RELATIONS),
     sibling: pickRandom(NAME_POOLS.sibling),
     friend: pickRandom(NAME_POOLS.friend),
     lover: pickRandom(NAME_POOLS.lover),
@@ -62,41 +84,65 @@ function buildContext(inputs) {
 
 function generateStory(inputs) {
   const ctx = buildContext(inputs);
+  const config = LENGTH_CONFIG[inputs.length];
   const paragraphs = [];
 
-  let opening = `${inputs.year}年，${inputs.name}出生於${inputs.country}。`;
-  opening += PERSONALITY_LINES[inputs.personality](inputs.name);
+  let opening = `${inputs.year}年，${inputs.fullName}出生於${inputs.country}。`;
+  opening += PERSONALITY_LINES[inputs.personality](inputs.given);
   if (inputs.traits.length > 0) {
-    opening += `個性${inputs.traits.join("、")}的${inputs.name}，從小便展現出與眾不同的一面。`;
+    opening += `個性${inputs.traits.join("、")}的${inputs.given}，從小便展現出與眾不同的一面。`;
   }
   paragraphs.push(opening);
+
+  const chapterPicks = pickRandomN(GENERIC_CHAPTERS, config.chapters);
+  chapterPicks.forEach((fn) => paragraphs.push(fn(ctx.given)));
 
   const order = ["nation", "family", "friend", "love"];
   order.forEach((routeId) => {
     if (inputs.routes.includes(routeId)) {
-      paragraphs.push(ROUTE_TEMPLATES[routeId][inputs.role](ctx));
+      const scenes = ROUTE_SCENES[routeId][inputs.role].slice(0, config.scenes);
+      paragraphs.push(scenes.map((fn) => fn(ctx)).join(""));
     }
   });
 
-  paragraphs.push(pickRandom(MENTOR_LINES)(inputs.name, ctx.mentor));
-  paragraphs.push(STYLE_TRANSITIONS[inputs.style](inputs.name));
-  paragraphs.push(pickRandom(STYLE_ENDINGS[inputs.style])(inputs.name));
+  const mentorPicks = pickRandomN(MENTOR_LINES, config.mentorLines);
+  paragraphs.push(mentorPicks.map((fn) => fn(ctx.given, ctx.mentor)).join(""));
+
+  if (config.reflection) {
+    paragraphs.push(REFLECTION_LINES[inputs.style](ctx.given));
+  }
+
+  const target = inputs.length;
+  const fillers = STYLE_FILLERS[inputs.style];
+  let currentLength = paragraphs.join("").length;
+  let safety = 200;
+  while (currentLength < target * 0.85 && safety > 0) {
+    const line = pickRandom(fillers)(ctx.given);
+    paragraphs.push(line);
+    currentLength += line.length;
+    safety--;
+  }
+
+  paragraphs.push(STYLE_TRANSITIONS[inputs.style](ctx.given));
+  paragraphs.push(pickRandom(STYLE_ENDINGS[inputs.style])(ctx.given));
 
   return paragraphs.join("");
 }
 
 function readInputs() {
-  const name = document.getElementById("name-input").value.trim();
+  const surname = document.getElementById("surname-input").value.trim();
+  const given = document.getElementById("given-input").value.trim();
   const year = document.getElementById("year-input").value.trim();
   const countrySelect = document.getElementById("country-select").value;
   const country = countrySelect === "其他" ? document.getElementById("country-custom").value.trim() : countrySelect;
   const role = document.querySelector('input[name="role"]:checked').value;
   const personality = document.querySelector('input[name="personality"]:checked').value;
 
-  if (!name || !year || !country || selectedRoutes.length === 0 || !selectedStyle) return null;
+  if (!surname || !given || !year || !country || selectedRoutes.length === 0 || !selectedStyle) return null;
 
   return {
-    name,
+    fullName: surname + given,
+    given,
     year,
     country,
     role,
@@ -104,6 +150,7 @@ function readInputs() {
     traits: selectedTraits.slice(),
     routes: selectedRoutes.slice(),
     style: selectedStyle,
+    length: selectedLength,
   };
 }
 
@@ -117,6 +164,7 @@ function renderStory(inputs) {
 
 window.addEventListener("load", () => {
   renderCountrySelect();
+  renderLengthSelect();
   renderChips("routes-container", ROUTES, selectedRoutes, false);
   renderChips("traits-container", TRAIT_OPTIONS, selectedTraits, false);
   renderChips("style-container", STYLES, [selectedStyle], true);
@@ -130,7 +178,7 @@ window.addEventListener("load", () => {
   document.getElementById("generate-btn").addEventListener("click", () => {
     const inputs = readInputs();
     if (!inputs) {
-      alert("請填寫姓名、出生年份、國家，並至少選擇一項情感路線。");
+      alert("請填寫姓、名、出生年份、國家，並至少選擇一項情感路線。");
       return;
     }
     lastInputs = inputs;
