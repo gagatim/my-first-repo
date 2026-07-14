@@ -41,12 +41,59 @@
         </div>
       </div>
       <div class="menu-actions">
-        <button id="adventure-btn">🗺️ 前進冒險</button>
+        <button id="stage-select-btn">🗺️ 選擇挑戰</button>
+        <button id="shop-btn">🏪 商店</button>
+        <button id="inventory-btn">🎒 裝備背包</button>
         <button id="skills-btn">📖 查看技能</button>
         <button id="ascend-btn" class="hidden accent">✨ 轉升</button>
         <button id="reset-btn" class="danger">🗑️ 重置角色</button>
       </div>
       <div id="skills-panel" class="panel hidden"></div>
+    </section>
+
+    <section id="screen-stage-select" class="screen hidden">
+      <h1>🗺️ 選擇挑戰</h1>
+      <div id="stage-list" class="stage-list"></div>
+      <button id="stage-back-btn">◀ 返回</button>
+    </section>
+
+    <section id="screen-shop" class="screen hidden">
+      <h1>🏪 商店</h1>
+      <p id="shop-gold-text" class="muted"></p>
+      <div class="shop-tabs" id="shop-tabs">
+        <button data-tab="weapon">武器</button>
+        <button data-tab="armor">防具</button>
+        <button data-tab="potion">藥水</button>
+        <button data-tab="material">材料</button>
+        <button data-tab="statboost">藥劑</button>
+        <button data-tab="skill">技能</button>
+        <button data-tab="bundle">禮包</button>
+      </div>
+      <div id="shop-list" class="shop-list"></div>
+      <button id="shop-back-btn">◀ 返回</button>
+    </section>
+
+    <section id="screen-inventory" class="screen hidden">
+      <h1>🎒 裝備背包</h1>
+      <div class="panel">
+        <h3>已裝備</h3>
+        <div id="equipped-weapon" class="equip-row"></div>
+        <div id="equipped-armor" class="equip-row"></div>
+      </div>
+      <div id="enhance-panel" class="panel hidden"></div>
+      <div class="panel">
+        <h3>持有武器</h3>
+        <div id="owned-weapons"></div>
+      </div>
+      <div class="panel">
+        <h3>持有防具</h3>
+        <div id="owned-armors"></div>
+      </div>
+      <div class="panel">
+        <h3>藥水 / 材料</h3>
+        <div id="owned-consumables"></div>
+      </div>
+      <button id="inventory-back-btn">◀ 返回</button>
     </section>
 
     <section id="screen-dialogue" class="screen hidden">
@@ -76,9 +123,11 @@
       <div class="battle-actions" id="battle-actions">
         <button id="attack-btn">⚔️ 攻擊</button>
         <button id="skill-menu-btn">✨ 技能</button>
+        <button id="potion-menu-btn">🧪 藥水</button>
         <button id="flee-btn">🏃 逃跑</button>
       </div>
       <div class="battle-skill-list hidden" id="battle-skill-list"></div>
+      <div class="battle-skill-list hidden" id="battle-potion-list"></div>
       <button id="battle-continue-btn" class="hidden accent">繼續 ▶</button>
     </section>
   </div>
