@@ -67,7 +67,7 @@ function renderChips(containerId, options, selectedList, single) {
 
 function buildContext(inputs) {
   return {
-    given: inputs.given,
+    given: "我",
     year: inputs.year,
     country: inputs.country,
     father: pickRandom(NAME_POOLS.father),
@@ -89,10 +89,10 @@ function generateStory(inputs) {
   const config = LENGTH_CONFIG[inputs.length];
   const acts = [];
 
-  let opening = `${inputs.year}年，${inputs.fullName}出生於${inputs.country}。`;
-  opening += PERSONALITY_LINES[inputs.personality](inputs.given);
+  let opening = `我是${inputs.fullName}，${inputs.year}年出生於${inputs.country}。`;
+  opening += PERSONALITY_LINES[inputs.personality](ctx.given);
   if (inputs.traits.length > 0) {
-    opening += `個性${inputs.traits.join("、")}的${inputs.given}，從小便展現出與眾不同的一面。`;
+    opening += `個性${inputs.traits.join("、")}的${ctx.given}，從小便展現出與眾不同的一面。`;
   }
   acts.push({ title: "序幕・初生", text: opening });
 
@@ -109,7 +109,7 @@ function generateStory(inputs) {
     }
   });
 
-  const mentorPicks = pickRandomN(MENTOR_LINES, config.mentorLines);
+  const mentorPicks = MENTOR_LINES.slice(0, config.mentorLines);
   acts.push({ title: "恩師引路", text: mentorPicks.map((fn) => fn(ctx.given, ctx.mentor)).join("") });
 
   const target = inputs.length;
