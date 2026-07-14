@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>人生劇本產生器</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app">
+    <h1>📖 人生劇本產生器</h1>
+    <p class="subtitle">輸入你的設定，產生一段獨一無二的人生故事</p>
+
+    <section id="form-section">
+      <label>姓名</label>
+      <input id="name-input" placeholder="輸入姓名" maxlength="10">
+
+      <label>出生年份</label>
+      <input id="year-input" type="number" placeholder="例如 1995" value="1995">
+
+      <label>國家</label>
+      <select id="country-select"></select>
+      <input id="country-custom" class="hidden" placeholder="請輸入國家名稱">
+
+      <label>情感定位</label>
+      <div class="radio-row">
+        <label><input type="radio" name="role" value="give" checked> 付出</label>
+        <label><input type="radio" name="role" value="receive"> 被付出</label>
+      </div>
+
+      <label>情感路線（可複選，至少選 1 項）</label>
+      <div id="routes-container" class="chip-row"></div>
+
+      <label>人格傾向</label>
+      <div class="radio-row">
+        <label><input type="radio" name="personality" value="E" checked> E人（外向）</label>
+        <label><input type="radio" name="personality" value="I"> I人（內向）</label>
+      </div>
+
+      <label>個性特質（可複選）</label>
+      <div id="traits-container" class="chip-row"></div>
+
+      <label>故事風格</label>
+      <div id="style-container" class="chip-row single"></div>
+
+      <button id="generate-btn">✨ 產生人生故事</button>
+    </section>
+
+    <section id="result-section" class="hidden">
+      <h2>你的人生故事</h2>
+      <div id="story-output"></div>
+      <p class="char-count" id="char-count"></p>
+      <div class="result-actions">
+        <button id="regenerate-btn">🔄 換個結局再抽一次</button>
+        <button id="copy-btn">📋 複製文字</button>
+      </div>
+    </section>
+  </div>
+
+  <script src="data.js"></script>
+  <script src="main.js"></script>
+</body>
+</html>
