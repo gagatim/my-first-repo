@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>今日運勢測驗</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app">
+    <header>
+      <h1>🔮 今日運勢測驗</h1>
+      <p class="subtitle">選一個顏色，看看今天運氣好不好</p>
+    </header>
+
+    <main>
+      <section id="color-picker">
+        <div class="colors" id="colors"></div>
+      </section>
+
+      <section id="result" class="result hidden">
+        <div class="result-emoji" id="result-emoji"></div>
+        <div class="result-level" id="result-level"></div>
+        <p class="result-message" id="result-message"></p>
+        <div class="result-tips" id="result-tips"></div>
+        <button id="retry-btn">再測一次</button>
+      </section>
+    </main>
+
+    <footer>
+      <p>每天同一個顏色只會有一種結果，明天再來看看運氣有沒有變化吧！</p>
+    </footer>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
