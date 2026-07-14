@@ -201,11 +201,15 @@ button:disabled {
 }
 
 .act-text {
-  margin: 0;
+  margin: 0 0 10px;
   line-height: 1.9;
   font-size: 0.98rem;
   text-indent: 2em;
   white-space: pre-wrap;
+}
+
+.act-text:last-child {
+  margin-bottom: 0;
 }
 
 .char-count {
