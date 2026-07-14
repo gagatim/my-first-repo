@@ -1,0 +1,144 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: "PingFang TC", "Microsoft JhengHei", -apple-system, sans-serif;
+  background: linear-gradient(135deg, #fdf6e3, #e8f0fe);
+  color: #333;
+}
+
+.app {
+  width: 100%;
+  max-width: 480px;
+  padding: 32px 24px;
+  text-align: center;
+}
+
+header h1 {
+  font-size: 1.8rem;
+  margin-bottom: 4px;
+}
+
+.subtitle {
+  color: #666;
+  margin-top: 0;
+}
+
+.colors {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 14px;
+  margin: 28px 0;
+}
+
+.color-swatch {
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  border: 3px solid transparent;
+  cursor: pointer;
+  transition: transform 0.15s ease, border-color 0.15s ease;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+.color-swatch:hover {
+  transform: scale(1.08);
+}
+
+.color-swatch.selected {
+  border-color: #333;
+  transform: scale(1.12);
+}
+
+.color-name {
+  font-size: 0.75rem;
+  margin-top: 6px;
+  color: #555;
+}
+
+.color-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.result {
+  background: #fff;
+  border-radius: 16px;
+  padding: 28px 20px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  animation: pop 0.3s ease;
+}
+
+.result.hidden {
+  display: none;
+}
+
+@keyframes pop {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.result-emoji {
+  font-size: 3rem;
+}
+
+.result-level {
+  font-size: 2.2rem;
+  font-weight: bold;
+  margin: 8px 0;
+}
+
+.result-message {
+  color: #555;
+  line-height: 1.6;
+}
+
+.result-tips {
+  margin-top: 14px;
+  font-size: 0.9rem;
+  color: #777;
+  background: #f7f7f7;
+  border-radius: 10px;
+  padding: 10px 14px;
+}
+
+#retry-btn {
+  margin-top: 20px;
+  padding: 10px 22px;
+  border: none;
+  border-radius: 24px;
+  background: #333;
+  color: #fff;
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+
+#retry-btn:hover {
+  background: #555;
+}
+
+footer {
+  margin-top: 24px;
+  font-size: 0.8rem;
+  color: #999;
+}
+
+/* level colors */
+.level-大吉 { color: #d4380d; }
+.level-小吉 { color: #d48806; }
+.level-平   { color: #08979c; }
+.level-小凶 { color: #6b6b6b; }
+.level-大凶 { color: #262626; }
