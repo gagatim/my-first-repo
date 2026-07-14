@@ -82,51 +82,57 @@ function buildContext(inputs) {
   };
 }
 
+const ROUTE_LABELS = ROUTES.reduce((map, r) => ((map[r.id] = r.label), map), {});
+
 function generateStory(inputs) {
   const ctx = buildContext(inputs);
   const config = LENGTH_CONFIG[inputs.length];
-  const paragraphs = [];
+  const acts = [];
 
   let opening = `${inputs.year}年，${inputs.fullName}出生於${inputs.country}。`;
   opening += PERSONALITY_LINES[inputs.personality](inputs.given);
   if (inputs.traits.length > 0) {
     opening += `個性${inputs.traits.join("、")}的${inputs.given}，從小便展現出與眾不同的一面。`;
   }
-  paragraphs.push(opening);
+  acts.push({ title: "序幕・初生", text: opening });
 
-  const chapterPicks = pickRandomN(GENERIC_CHAPTERS, config.chapters);
-  chapterPicks.forEach((fn) => paragraphs.push(fn(ctx.given)));
+  if (config.chapters > 0) {
+    const chapterPicks = pickRandomN(GENERIC_CHAPTERS, config.chapters);
+    acts.push({ title: "成長歲月", text: chapterPicks.map((fn) => fn(ctx.given)).join("") });
+  }
 
   const order = ["nation", "family", "friend", "love"];
   order.forEach((routeId) => {
     if (inputs.routes.includes(routeId)) {
       const scenes = ROUTE_SCENES[routeId][inputs.role].slice(0, config.scenes);
-      paragraphs.push(scenes.map((fn) => fn(ctx)).join(""));
+      acts.push({ title: `${ROUTE_LABELS[routeId]}羈絆`, text: scenes.map((fn) => fn(ctx)).join("") });
     }
   });
 
   const mentorPicks = pickRandomN(MENTOR_LINES, config.mentorLines);
-  paragraphs.push(mentorPicks.map((fn) => fn(ctx.given, ctx.mentor)).join(""));
-
-  if (config.reflection) {
-    paragraphs.push(REFLECTION_LINES[inputs.style](ctx.given));
-  }
+  acts.push({ title: "恩師引路", text: mentorPicks.map((fn) => fn(ctx.given, ctx.mentor)).join("") });
 
   const target = inputs.length;
-  const fillers = STYLE_FILLERS[inputs.style];
-  let currentLength = paragraphs.join("").length;
-  let safety = 200;
-  while (currentLength < target * 0.85 && safety > 0) {
-    const line = pickRandom(fillers)(ctx.given);
-    paragraphs.push(line);
+  const fillerPool = STYLE_FILLERS[inputs.style].slice();
+  let currentLength = acts.reduce((sum, a) => sum + a.text.length, 0);
+  const fillerLines = [];
+  while (currentLength < target * 0.85 && fillerPool.length > 0) {
+    const idx = Math.floor(Math.random() * fillerPool.length);
+    const line = fillerPool.splice(idx, 1)[0](ctx.given);
+    fillerLines.push(line);
     currentLength += line.length;
-    safety--;
+  }
+  if (fillerLines.length > 0) {
+    acts.push({ title: "日常剪影", text: fillerLines.join("") });
   }
 
-  paragraphs.push(STYLE_TRANSITIONS[inputs.style](ctx.given));
-  paragraphs.push(pickRandom(STYLE_ENDINGS[inputs.style])(ctx.given));
+  let epilogue = "";
+  if (config.reflection) epilogue += REFLECTION_LINES[inputs.style](ctx.given);
+  epilogue += STYLE_TRANSITIONS[inputs.style](ctx.given);
+  epilogue += pickRandom(STYLE_ENDINGS[inputs.style])(ctx.given);
+  acts.push({ title: "尾聲", text: epilogue });
 
-  return paragraphs.join("");
+  return acts;
 }
 
 function readInputs() {
@@ -154,10 +160,32 @@ function readInputs() {
   };
 }
 
+let lastActs = null;
+
+function escapeHtml(str) {
+  const div = document.createElement("div");
+  div.textContent = str;
+  return div.innerHTML;
+}
+
 function renderStory(inputs) {
-  const text = generateStory(inputs);
-  document.getElementById("story-output").textContent = text;
-  document.getElementById("char-count").textContent = `（共 ${text.length} 字）`;
+  const acts = generateStory(inputs);
+  lastActs = acts;
+
+  const container = document.getElementById("story-output");
+  container.innerHTML = acts
+    .map(
+      (act, i) => `
+        <div class="act">
+          <div class="act-title"><span class="act-num">第${i + 1}幕</span>${escapeHtml(act.title)}</div>
+          <p class="act-text">${escapeHtml(act.text)}</p>
+        </div>
+      `
+    )
+    .join("");
+
+  const totalLen = acts.reduce((sum, a) => sum + a.text.length, 0);
+  document.getElementById("char-count").textContent = `（共 ${totalLen} 字）`;
   document.getElementById("result-section").classList.remove("hidden");
   document.getElementById("result-section").scrollIntoView({ behavior: "smooth", block: "start" });
 }
@@ -191,7 +219,8 @@ window.addEventListener("load", () => {
   });
 
   document.getElementById("copy-btn").addEventListener("click", () => {
-    const text = document.getElementById("story-output").textContent;
+    if (!lastActs) return;
+    const text = lastActs.map((act, i) => `【第${i + 1}幕・${act.title}】\n${act.text}`).join("\n\n");
     navigator.clipboard.writeText(text).then(() => {
       const btn = document.getElementById("copy-btn");
       const original = btn.textContent;
