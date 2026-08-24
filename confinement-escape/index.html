@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>禁閉逃殺</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app">
+
+    <section id="screen-title" class="screen">
+      <h1>🔒 禁閉逃殺</h1>
+      <p class="subtitle">CONFINEMENT ESCAPE</p>
+      <p class="lead">你在「無光禁閉所」深處醒來，四周只剩鐵鏽與消毒水的氣味。<br>活著逃出去，或永遠留在黑暗裡。</p>
+      <button id="new-game-btn">🚪 開始逃亡</button>
+      <button id="continue-btn" class="hidden">▶ 繼續上次的逃亡</button>
+    </section>
+
+    <section id="screen-create" class="screen hidden">
+      <h1>選擇你的身份</h1>
+      <div id="identity-list" class="identity-list"></div>
+      <button id="create-btn" disabled>確認身份，開始逃亡</button>
+    </section>
+
+    <section id="screen-game" class="screen hidden">
+      <div class="status-bar">
+        <div class="status-row">
+          <span class="status-label">體力</span>
+          <div class="bar"><div id="bar-stamina" class="bar-fill stamina"></div></div>
+          <span id="text-stamina" class="status-value"></span>
+        </div>
+        <div class="status-row">
+          <span class="status-label">精神</span>
+          <div class="bar"><div id="bar-sanity" class="bar-fill sanity"></div></div>
+          <span id="text-sanity" class="status-value"></span>
+        </div>
+        <div class="status-row">
+          <span class="status-label">危險</span>
+          <div class="bar"><div id="bar-danger" class="bar-fill danger"></div></div>
+          <span id="text-danger" class="status-value"></span>
+        </div>
+      </div>
+      <div class="floor-tag" id="floor-tag"></div>
+
+      <div id="inventory-toggle-row">
+        <button id="inventory-toggle-btn">🎒 背包</button>
+      </div>
+      <div id="inventory-panel" class="panel hidden"></div>
+
+      <div class="story-box">
+        <p class="story-title" id="story-title"></p>
+        <p class="story-text" id="story-text"></p>
+      </div>
+      <div id="choice-list" class="choice-list"></div>
+      <button id="story-continue-btn" class="hidden accent">繼續 ▶</button>
+    </section>
+
+    <section id="screen-transition" class="screen hidden">
+      <div class="story-box transition-box">
+        <p class="story-title" id="transition-title"></p>
+        <p class="story-text" id="transition-text"></p>
+        <button id="transition-continue-btn">繼續 ▶</button>
+      </div>
+    </section>
+
+    <section id="screen-ending" class="screen hidden">
+      <div class="ending-box">
+        <div class="ending-emoji" id="ending-emoji"></div>
+        <h1 id="ending-title"></h1>
+        <p class="story-text" id="ending-text"></p>
+        <div class="panel" id="ending-summary"></div>
+      </div>
+      <button id="restart-btn">🔁 再逃一次</button>
+    </section>
+
+  </div>
+
+  <script src="data.js"></script>
+  <script src="main.js"></script>
+</body>
+</html>
