@@ -227,18 +227,51 @@ const MINOR_ARCANA = {
   ],
 };
 
+// 每張牌的核心主題標籤，用於「AI 心理分析」比對牌與牌之間的共鳴／張力，
+// 而不只是逐張解讀。標籤共 12 種：
+// begin 起點　end 結束放下　conflict 衝突對抗　clarity 清晰真相
+// confusion 混亂焦慮　connection 連結關係　isolation 孤立獨處
+// resource 資源現實　instability 失衡不穩定　growth 累積成長
+// power 掌控行動力　surrender 臣服療癒
+const CARD_THEMES = {
+  "major-0": "begin", "major-1": "power", "major-2": "clarity", "major-3": "resource",
+  "major-4": "power", "major-5": "connection", "major-6": "connection", "major-7": "power",
+  "major-8": "surrender", "major-9": "isolation", "major-10": "instability", "major-11": "clarity",
+  "major-12": "surrender", "major-13": "end", "major-14": "surrender", "major-15": "confusion",
+  "major-16": "conflict", "major-17": "surrender", "major-18": "confusion", "major-19": "clarity",
+  "major-20": "clarity", "major-21": "end",
+  "wands-1": "begin", "wands-2": "growth", "wands-3": "growth", "wands-4": "connection",
+  "wands-5": "conflict", "wands-6": "power", "wands-7": "conflict", "wands-8": "growth",
+  "wands-9": "conflict", "wands-10": "instability", "wands-11": "begin", "wands-12": "power",
+  "wands-13": "power", "wands-14": "power",
+  "cups-1": "begin", "cups-2": "connection", "cups-3": "connection", "cups-4": "confusion",
+  "cups-5": "end", "cups-6": "connection", "cups-7": "confusion", "cups-8": "end",
+  "cups-9": "resource", "cups-10": "connection", "cups-11": "begin", "cups-12": "connection",
+  "cups-13": "connection", "cups-14": "connection",
+  "swords-1": "clarity", "swords-2": "confusion", "swords-3": "end", "swords-4": "surrender",
+  "swords-5": "conflict", "swords-6": "surrender", "swords-7": "isolation", "swords-8": "confusion",
+  "swords-9": "confusion", "swords-10": "end", "swords-11": "clarity", "swords-12": "conflict",
+  "swords-13": "clarity", "swords-14": "power",
+  "pentacles-1": "begin", "pentacles-2": "instability", "pentacles-3": "growth", "pentacles-4": "instability",
+  "pentacles-5": "isolation", "pentacles-6": "connection", "pentacles-7": "growth", "pentacles-8": "growth",
+  "pentacles-9": "resource", "pentacles-10": "resource", "pentacles-11": "begin", "pentacles-12": "growth",
+  "pentacles-13": "resource", "pentacles-14": "resource",
+};
+
 // 組成完整的 78 張牌陣列
 const TAROT_DECK = [];
 
 MAJOR_ARCANA.forEach((card) => {
+  const id = `major-${card.num}`;
   TAROT_DECK.push({
-    id: `major-${card.num}`,
+    id,
     arcana: "major",
     name: card.name,
     subtitle: "大阿爾克那",
     img: `assets/cards/${card.img}`,
     keywords: { up: card.up, rev: card.rev },
     text: { up: card.upText, rev: card.revText },
+    theme: CARD_THEMES[id],
   });
 });
 
@@ -248,13 +281,15 @@ const SUIT_FILE_PREFIX = { wands: "wands", cups: "cups", swords: "swords", penta
 Object.keys(MINOR_ARCANA).forEach((suitKey) => {
   const suit = SUITS[suitKey];
   MINOR_ARCANA[suitKey].forEach((card) => {
+    const id = `${suitKey}-${card.rank}`;
     TAROT_DECK.push({
-      id: `${suitKey}-${card.rank}`,
+      id,
       arcana: "minor",
       suit: suitKey,
       element: suit.element,
       name: `${suit.name}${RANK_LABELS[card.rank]}`,
       subtitle: `小阿爾克那・${suit.name}`,
+      theme: CARD_THEMES[id],
       img: `assets/cards/${SUIT_FILE_PREFIX[suitKey]}${String(card.rank).padStart(2, "0")}.jpg`,
       keywords: { up: card.up, rev: card.rev },
       text: { up: card.upText, rev: card.revText },

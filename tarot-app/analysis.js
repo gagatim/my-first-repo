@@ -1,7 +1,7 @@
 // AI 心理分析引擎
 // 說明：這是一個在瀏覽器端運作的規則式生成引擎，會根據抽到的牌、
-// 牌陣位置、正逆位、牌與牌之間的關係，以及你輸入的問題所屬的主題，
-// 組合出一段客製化的心理分析文字。
+// 牌陣位置、正逆位、牌與牌之間的主題共鳴或張力，以及你輸入的問題
+// 所屬的主題，組合出一段客製化的心理分析文字。
 // 它不會呼叫任何外部 AI 服務，因此不需要 API 金鑰，也不會把你的資料傳到任何地方。
 
 const POSITION_LENS = {
@@ -43,21 +43,54 @@ const PAIR_RULES = {
   ],
 };
 
-// 關鍵字延伸句型：有偵測到問題主題 / 沒有主題時，各準備多種說法輪流使用，避免每張牌都念同一套模板
-const DEEP_DIVE_WITH_CATEGORY = [
-  (kw, cat) => `放回「${cat}」來看，「${kw}」很可能是這個位置上最不能忽略的線索——它未必是全部答案，但值得你多留意一下。`,
-  (kw, cat) => `對照到「${cat}」這件事，「${kw}」這個關鍵字，或許正說中了你心裡某個還沒整理清楚的部分。`,
-  (kw, cat) => `如果把這張牌套進「${cat}」的處境，「${kw}」幾乎是它在對你眨眼的地方——先別急著解讀，感受一下它是不是有點眼熟。`,
-  (kw, cat) => `就「${cat}」而言，這裡的重點在「${kw}」：它可能不是問題本身，而是問題底下更根本的那一層。`,
-  (kw, cat) => `扣回「${cat}」，「${kw}」這個線索值得停留久一點——通常一張牌會被抽到這個位置，不是巧合。`,
-  (kw, cat) => `從「${cat}」的角度切入，「${kw}」是這張牌想遞給你的關鍵字，剩下的解讀，交給你自己最誠實的直覺。`,
+// 12 種核心主題的中文標籤，與每種主題較精準、非套版的解讀語句
+const THEME_LABELS = {
+  begin: "起點",
+  end: "結束與放下",
+  conflict: "衝突與對抗",
+  clarity: "清晰與真相",
+  confusion: "混亂與焦慮",
+  connection: "連結與關係",
+  isolation: "孤立與獨處",
+  resource: "資源與現實",
+  instability: "失衡與不穩定",
+  growth: "累積與成長",
+  power: "掌控與行動力",
+  surrender: "臣服與療癒",
+};
+
+const THEME_PRECISION = {
+  begin: (kw) => `這是一張關於「起點」的牌，重點不在於萬事俱備，而在於你願不願意先跨出那一步——「${kw}」正是這個起點目前最具體的樣貌。`,
+  end: (kw) => `這是一張關於「結束」的牌，它談的不是失去，而是騰出空間——「${kw}」點出了你現在最需要放下的是什麼。`,
+  conflict: (kw) => `這張牌指向一場正在發生的拉扯，無論對象是別人還是自己——「${kw}」是這場角力目前最明顯的樣子。`,
+  clarity: (kw) => `這是一張帶來清晰的牌，代表答案其實已經浮現，只是你可能還沒完全承認——「${kw}」是那道光照到的地方。`,
+  confusion: (kw) => `這張牌反映出一種尚未釐清的混亂，感受本身可能就是重點——「${kw}」是目前最需要被安放、而不是急著解決的部分。`,
+  connection: (kw) => `這是一張關於連結的牌，重點在於你和誰、或和自己的哪個部分正在靠近——「${kw}」是這份連結最核心的線索。`,
+  isolation: (kw) => `這張牌帶著獨自一人的況味，未必是壞事，有時候正是需要的距離——「${kw}」點出了你此刻與外界之間的那道界線。`,
+  resource: (kw) => `這是一張關於資源與現實的牌，談的是你手上實際擁有的籌碼——「${kw}」是目前最值得盤點的部分。`,
+  instability: (kw) => `這張牌透露出一種失衡的狀態，可能是資源、情緒或步調上的不對稱——「${kw}」是目前最容易被忽略、卻最該調整的地方。`,
+  growth: (kw) => `這是一張關於累積的牌，效果不會立刻顯現，但每一步都算數——「${kw}」正是這段累積過程目前最具體的樣子。`,
+  power: (kw) => `這張牌關乎你能不能、願不願意掌握主導權——「${kw}」是你目前手上最實際的籌碼或姿態。`,
+  surrender: (kw) => `這是一張關於臣服與接受的牌，力量來自不再對抗——「${kw}」是你目前最需要練習放手信任的部分。`,
+};
+
+// 兩兩相對的主題組合，用來偵測牌陣裡是否存在明顯的內在張力
+const OPPOSITE_THEMES = [
+  ["begin", "end"],
+  ["connection", "isolation"],
+  ["clarity", "confusion"],
+  ["power", "surrender"],
+  ["resource", "instability"],
+  ["growth", "conflict"],
 ];
 
-const DEEP_DIVE_GENERIC = [
-  (kws) => `「${kws}」是這張牌在這個位置上最核心的提示，值得你停留一下，想想它對應到生活中的哪個畫面。`,
-  (kws) => `這裡的關鍵字是「${kws}」——先別急著套進特定的事件，讓它先在心裡沉澱一下再說。`,
-  (kws) => `「${kws}」這幾個字，或許比整段牌義更值得你記住，之後回頭看，常常會發現特別準的就是這裡。`,
-  (kws) => `留意「${kws}」這個關鍵字，它可能是這張牌想讓你優先看見的部分。`,
+// 問題主題的扣回句：多種說法輪流使用，避免每張牌後面都接同一句
+const CATEGORY_TIEBACKS = [
+  (cat) => `對照到你問的「${cat}」，這一點格外值得留意。`,
+  (cat) => `放進「${cat}」的脈絡裡，這句話大概比其他句子更值得多讀一次。`,
+  (cat) => `如果你問的是「${cat}」，這裡透露的訊息可能比表面看起來更直接。`,
+  (cat) => `扣回「${cat}」來看，這張牌給的提示相當具體。`,
+  (cat) => `這一點放在「${cat}」的處境裡，尤其說得通。`,
 ];
 
 const REFLECTION_PROMPTS = [
@@ -116,6 +149,42 @@ function buildPairInsights(spread, draws) {
   }).filter(Boolean);
 }
 
+// 找出牌陣中「主題共鳴」：兩張以上的牌指向同一個核心主題，並點名是哪幾張牌
+function findThemeConvergence(draws) {
+  const groups = {};
+  draws.forEach((d) => {
+    const theme = d.card.theme;
+    if (!theme) return;
+    if (!groups[theme]) groups[theme] = [];
+    groups[theme].push(d);
+  });
+  return Object.entries(groups)
+    .filter(([, group]) => group.length >= 2)
+    .sort((a, b) => b[1].length - a[1].length);
+}
+
+// 找出牌陣中「主題張力」：兩個相對主題同時出現，並點名代表的牌
+function findThemeTension(draws) {
+  const presentThemes = {};
+  draws.forEach((d) => {
+    if (!d.card.theme) return;
+    if (!presentThemes[d.card.theme]) presentThemes[d.card.theme] = [];
+    presentThemes[d.card.theme].push(d);
+  });
+
+  const tensions = [];
+  OPPOSITE_THEMES.forEach(([a, b]) => {
+    if (presentThemes[a] && presentThemes[b]) {
+      tensions.push({ a, b, drawsA: presentThemes[a], drawsB: presentThemes[b] });
+    }
+  });
+  return tensions;
+}
+
+function nameCards(drawList) {
+  return drawList.map((d) => `${d.card.name}（${d.position.label}）`).join("、");
+}
+
 // draws: [{ card, orientation: 'up' | 'rev', position: { key, label } }, ...]
 function generateAnalysis(spread, draws, question) {
   const paragraphs = [];
@@ -134,22 +203,19 @@ function generateAnalysis(spread, draws, question) {
     );
   }
 
-  // 逐張牌深入解讀：位置意義 + 牌義 + 關鍵字延伸（扣回問題主題，句型輪流變化避免重複）
+  // 逐張牌深入解讀：位置意義 + 牌義 + 主題精準解讀（扣回問題主題，句型輪流變化）
   draws.forEach((draw, idx) => {
     const { card, orientation, position } = draw;
     const orientLabel = orientation === "up" ? "正位" : "逆位";
     const text = card.text[orientation];
     const lens = POSITION_LENS[position.key] || ((t) => t);
-    const keywords = card.keywords[orientation];
-    const primaryKeyword = keywords[0];
+    const primaryKeyword = card.keywords[orientation][0];
 
-    let deepDive;
+    const themeFn = THEME_PRECISION[card.theme];
+    let deepDive = themeFn ? themeFn(primaryKeyword) : "";
     if (category) {
-      const template = DEEP_DIVE_WITH_CATEGORY[idx % DEEP_DIVE_WITH_CATEGORY.length];
-      deepDive = template(primaryKeyword, category.label);
-    } else {
-      const template = DEEP_DIVE_GENERIC[idx % DEEP_DIVE_GENERIC.length];
-      deepDive = template(keywords.slice(0, 2).join("、"));
+      const tieback = CATEGORY_TIEBACKS[idx % CATEGORY_TIEBACKS.length];
+      deepDive += tieback(category.label);
     }
 
     paragraphs.push(
@@ -159,6 +225,26 @@ function generateAnalysis(spread, draws, question) {
 
   // 位置對照分析（例如過去/未來、阻礙/建議）
   buildPairInsights(spread, draws).forEach((insight) => paragraphs.push(insight));
+
+  // 主題共鳴：不只是比例，而是點名哪幾張牌共同指向同一件事
+  if (draws.length > 1) {
+    const convergence = findThemeConvergence(draws);
+    if (convergence.length > 0) {
+      const [theme, group] = convergence[0];
+      paragraphs.push(
+        `值得特別注意的是，${nameCards(group)}這幾張牌，都不約而同地圍繞著「${THEME_LABELS[theme]}」這個主題——這不太可能是巧合，通常代表這件事對你來說，比表面上看起來更重要、也更需要被正視。`
+      );
+    }
+
+    // 主題張力：牌陣裡出現彼此相對的主題
+    const tensions = findThemeTension(draws);
+    if (tensions.length > 0) {
+      const t = tensions[0];
+      paragraphs.push(
+        `同時，牌陣裡也存在一股拉扯：${nameCards(t.drawsA)}指向「${THEME_LABELS[t.a]}」，而${nameCards(t.drawsB)}卻指向「${THEME_LABELS[t.b]}」。這種一體兩面的並置，往往代表你正卡在兩種心情之間——與其急著選邊站，不如先承認這兩股力量在你心裡目前是同時存在的。`
+      );
+    }
+  }
 
   // 大阿爾克那 / 小阿爾克那 比例
   const majorCount = draws.filter((d) => d.card.arcana === "major").length;
@@ -210,14 +296,29 @@ function generateAnalysis(spread, draws, question) {
     );
   }
 
-  // 回到問題本身的總結（只在有輸入問題時出現）
+  // 回到問題本身的總結：優先使用主題共鳴／張力，讓結論真正扣著這次的組合，而不是套版
   if (trimmedQuestion) {
-    const priorityKeys = ["outcome", "advice", "bond", "future", "spirit", "guide"];
-    const keyPosition = priorityKeys.map((k) => findDraw(draws, k)).find(Boolean) || draws[draws.length - 1];
-    const kw = keyPosition.card.keywords[keyPosition.orientation][0];
-    paragraphs.push(
-      `回到你最初的問題「${trimmedQuestion}」——如果只能抓住一個重點，那大概會落在【${keyPosition.position.label}】的${keyPosition.card.name}上：關鍵字是「${kw}」。這張牌沒有直接給你答案，但它指出了一個方向——真正的決定，還是要回到你自己對這件事最誠實的感覺。`
-    );
+    const convergence = findThemeConvergence(draws);
+    const tensions = findThemeTension(draws);
+
+    if (convergence.length > 0) {
+      const [theme, group] = convergence[0];
+      paragraphs.push(
+        `回到你最初的問題「${trimmedQuestion}」——這次牌陣裡最一致的訊號，來自${nameCards(group)}反覆指向的「${THEME_LABELS[theme]}」。與其說牌在給你答案，不如說它在告訴你：這件事的關鍵，可能不在你以為的那個點上，而在「${THEME_LABELS[theme]}」這件事，你準備得夠不夠。`
+      );
+    } else if (tensions.length > 0) {
+      const t = tensions[0];
+      paragraphs.push(
+        `回到你最初的問題「${trimmedQuestion}」——牌陣沒有給出一個乾脆的答案，反而攤開了你內心「${THEME_LABELS[t.a]}」與「${THEME_LABELS[t.b]}」之間的拉鋸。也許現階段誠實的答案不是「該選哪一邊」，而是先承認這個猶豫本身，就是你目前最真實的處境。`
+      );
+    } else {
+      const priorityKeys = ["outcome", "advice", "bond", "future", "spirit", "guide"];
+      const keyPosition = priorityKeys.map((k) => findDraw(draws, k)).find(Boolean) || draws[draws.length - 1];
+      const kw = keyPosition.card.keywords[keyPosition.orientation][0];
+      paragraphs.push(
+        `回到你最初的問題「${trimmedQuestion}」——如果只能抓住一個重點，那大概會落在【${keyPosition.position.label}】的${keyPosition.card.name}上：關鍵字是「${kw}」。這張牌沒有直接給你答案，但它指出了一個方向——真正的決定，還是要回到你自己對這件事最誠實的感覺。`
+      );
+    }
   }
 
   // 結語與反思提問
