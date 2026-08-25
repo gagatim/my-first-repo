@@ -40,13 +40,18 @@
       <section id="screen-draw" class="screen">
         <p class="draw-instruction" id="draw-instruction"></p>
 
-        <div class="deck-area">
-          <div id="deck-pile" class="deck-pile" title="點擊抽牌">
+        <div id="ritual-stage" class="ritual-stage">
+          <div id="shuffle-deck" class="shuffle-deck">
             <div class="deck-card"></div>
             <div class="deck-card"></div>
             <div class="deck-card deck-card-top"></div>
           </div>
-          <p class="deck-hint">點擊牌堆抽牌</p>
+          <button id="shuffle-btn" class="primary-btn small-btn">🔀 靜心洗牌</button>
+        </div>
+
+        <div id="fan-wrap" class="fan-wrap hidden">
+          <p class="fan-hint">← 左右滑動瀏覽全部的牌，憑直覺點選 →</p>
+          <div id="fan-container" class="fan-container"></div>
         </div>
 
         <div id="position-slots" class="position-slots"></div>

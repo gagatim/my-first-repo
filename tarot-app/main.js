@@ -1,6 +1,7 @@
 let selectedSpread = null;
 let shuffledDeck = [];
 let draws = [];
+let pickedIndices = new Set();
 
 function shuffle(arr) {
   const a = arr.slice();
@@ -46,14 +47,118 @@ function startDraw() {
     orientation: Math.random() < 0.25 ? "rev" : "up",
   }));
   draws = [];
-
-  document.getElementById("draw-instruction").textContent =
-    `請依序點擊牌堆，抽出 ${selectedSpread.positions.length} 張牌：${selectedSpread.positions.map((p) => p.label).join("、")}`;
+  pickedIndices = new Set();
 
   renderPositionSlots();
+  updateDrawInstruction(`一共需要挑選 ${selectedSpread.positions.length} 張牌：${selectedSpread.positions.map((p) => p.label).join("、")}。先靜下心，點擊牌堆洗牌。`);
+
   document.getElementById("view-result-btn").classList.add("hidden");
-  document.getElementById("deck-pile").classList.remove("depleted");
+  document.getElementById("fan-wrap").classList.add("hidden");
+  document.getElementById("fan-container").innerHTML = "";
+  document.getElementById("ritual-stage").classList.remove("hidden", "fading-out");
+  document.getElementById("shuffle-deck").classList.remove("shuffling");
+  document.getElementById("shuffle-btn").disabled = false;
+
   showScreen("screen-draw");
+}
+
+function updateDrawInstruction(text) {
+  document.getElementById("draw-instruction").textContent = text;
+}
+
+function highlightNextSlot() {
+  document.querySelectorAll(".slot").forEach((el) => el.classList.remove("active"));
+  if (draws.length >= selectedSpread.positions.length) return;
+  const nextPosition = selectedSpread.positions[draws.length];
+  const slot = document.querySelector(`.slot[data-position-key="${nextPosition.key}"]`);
+  if (slot) slot.classList.add("active");
+}
+
+function runShuffleRitual() {
+  const btn = document.getElementById("shuffle-btn");
+  btn.disabled = true;
+  document.getElementById("shuffle-deck").classList.add("shuffling");
+
+  setTimeout(() => {
+    const stage = document.getElementById("ritual-stage");
+    stage.classList.add("fading-out");
+    setTimeout(() => {
+      stage.classList.add("hidden");
+      renderFan();
+      document.getElementById("fan-wrap").classList.remove("hidden");
+      updateDrawInstruction(`憑直覺挑選第 1 張牌：${selectedSpread.positions[0].label}`);
+      highlightNextSlot();
+    }, 350);
+  }, 950);
+}
+
+function renderFan() {
+  const container = document.getElementById("fan-container");
+  container.innerHTML = "";
+  const n = shuffledDeck.length;
+  const mid = (n - 1) / 2;
+
+  const maxRotate = 16;
+  const maxLift = 26;
+
+  shuffledDeck.forEach((entry, idx) => {
+    const offset = idx - mid;
+    const rotate = Math.max(-maxRotate, Math.min(maxRotate, offset * 0.55));
+    const lift = Math.min(maxLift, Math.pow(Math.abs(offset), 1.15) * 0.9);
+
+    const el = document.createElement("div");
+    el.className = "fan-card";
+    el.style.transform = `rotate(${rotate}deg) translateY(${lift}px)`;
+    el.innerHTML = `<div class="fan-card-back"></div>`;
+    el.addEventListener("click", () => pickFanCard(idx, el));
+    container.appendChild(el);
+  });
+}
+
+function pickFanCard(idx, el) {
+  if (pickedIndices.has(idx)) return;
+  if (draws.length >= selectedSpread.positions.length) return;
+
+  pickedIndices.add(idx);
+  el.classList.add("picked");
+
+  const position = selectedSpread.positions[draws.length];
+  const drawn = shuffledDeck[idx];
+  draws.push({ card: drawn.card, orientation: drawn.orientation, position });
+
+  fillSlot(position, drawn);
+
+  setTimeout(() => {
+    el.style.visibility = "hidden";
+  }, 350);
+
+  if (draws.length >= selectedSpread.positions.length) {
+    updateDrawInstruction("抽牌完成，靜下心感受一下這幾張牌帶給你的感覺。");
+    document.querySelectorAll(".slot").forEach((s) => s.classList.remove("active"));
+    setTimeout(() => {
+      document.getElementById("fan-wrap").classList.add("fading-out");
+      setTimeout(() => {
+        document.getElementById("view-result-btn").classList.remove("hidden");
+      }, 300);
+    }, 400);
+  } else {
+    updateDrawInstruction(`憑直覺挑選第 ${draws.length + 1} 張牌：${selectedSpread.positions[draws.length].label}`);
+    highlightNextSlot();
+  }
+}
+
+function fillSlot(position, drawn) {
+  const slot = document.querySelector(`.slot[data-position-key="${position.key}"]`);
+  const img = slot.querySelector(".card-img");
+  img.src = drawn.card.img;
+  img.alt = drawn.card.name;
+  if (drawn.orientation === "rev") img.classList.add("reversed");
+
+  const badge = slot.querySelector(".orientation-badge");
+  badge.textContent = drawn.orientation === "up" ? "正位" : "逆位";
+  badge.classList.add(drawn.orientation === "up" ? "up" : "rev");
+
+  requestAnimationFrame(() => slot.classList.add("flipped"));
 }
 
 function renderPositionSlots() {
@@ -75,34 +180,6 @@ function renderPositionSlots() {
     `;
     container.appendChild(slot);
   });
-}
-
-function drawNextCard() {
-  if (draws.length >= selectedSpread.positions.length) return;
-  if (shuffledDeck.length === 0) return;
-
-  const position = selectedSpread.positions[draws.length];
-  const drawn = shuffledDeck.pop();
-  draws.push({ card: drawn.card, orientation: drawn.orientation, position });
-
-  const slot = document.querySelector(`.slot[data-position-key="${position.key}"]`);
-  const img = slot.querySelector(".card-img");
-  img.src = drawn.card.img;
-  img.alt = drawn.card.name;
-  if (drawn.orientation === "rev") img.classList.add("reversed");
-
-  const badge = slot.querySelector(".orientation-badge");
-  badge.textContent = drawn.orientation === "up" ? "正位" : "逆位";
-  badge.classList.add(drawn.orientation === "up" ? "up" : "rev");
-
-  requestAnimationFrame(() => slot.classList.add("flipped"));
-
-  if (draws.length >= selectedSpread.positions.length) {
-    document.getElementById("deck-pile").classList.add("depleted");
-    setTimeout(() => {
-      document.getElementById("view-result-btn").classList.remove("hidden");
-    }, 500);
-  }
 }
 
 function renderResult() {
@@ -151,7 +228,7 @@ function resetApp() {
 
 renderSpreadGrid();
 document.getElementById("start-btn").addEventListener("click", startDraw);
-document.getElementById("deck-pile").addEventListener("click", drawNextCard);
+document.getElementById("shuffle-btn").addEventListener("click", runShuffleRitual);
 document.getElementById("view-result-btn").addEventListener("click", renderResult);
 document.getElementById("analysis-btn").addEventListener("click", runAnalysis);
 document.getElementById("retry-btn").addEventListener("click", resetApp);
