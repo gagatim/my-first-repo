@@ -2,6 +2,7 @@ let selectedSpread = null;
 let shuffledDeck = [];
 let draws = [];
 let pickedIndices = new Set();
+let isShuffling = false;
 
 function shuffle(arr) {
   const a = arr.slice();
@@ -48,13 +49,17 @@ function startDraw() {
   }));
   draws = [];
   pickedIndices = new Set();
+  isShuffling = false;
 
   renderPositionSlots();
   updateDrawInstruction(`一共需要挑選 ${selectedSpread.positions.length} 張牌：${selectedSpread.positions.map((p) => p.label).join("、")}。先靜下心，點擊牌堆洗牌。`);
 
   document.getElementById("view-result-btn").classList.add("hidden");
+  document.getElementById("fan-wrap").classList.remove("fading-out");
   document.getElementById("fan-wrap").classList.add("hidden");
   document.getElementById("fan-container").innerHTML = "";
+  document.getElementById("reshuffle-btn").classList.remove("hidden");
+  document.getElementById("reshuffle-btn").disabled = false;
   document.getElementById("ritual-stage").classList.remove("hidden", "fading-out");
   document.getElementById("shuffle-deck").classList.remove("shuffling");
   document.getElementById("shuffle-btn").disabled = false;
@@ -75,6 +80,9 @@ function highlightNextSlot() {
 }
 
 function runShuffleRitual() {
+  if (isShuffling) return;
+  isShuffling = true;
+
   const btn = document.getElementById("shuffle-btn");
   btn.disabled = true;
   document.getElementById("shuffle-deck").classList.add("shuffling");
@@ -88,8 +96,36 @@ function runShuffleRitual() {
       document.getElementById("fan-wrap").classList.remove("hidden");
       updateDrawInstruction(`憑直覺挑選第 1 張牌：${selectedSpread.positions[0].label}`);
       highlightNextSlot();
+      isShuffling = false;
     }, 350);
   }, 950);
+}
+
+// 重新洗牌：只針對「還沒被抽走」的牌重新排列順序與正逆位，
+// 已經抽出、填進位置卡槽的牌不受影響
+function reshuffleFan() {
+  if (isShuffling) return;
+  if (!selectedSpread || draws.length >= selectedSpread.positions.length) return;
+  isShuffling = true;
+
+  const reshuffleBtn = document.getElementById("reshuffle-btn");
+  reshuffleBtn.disabled = true;
+  const fanContainer = document.getElementById("fan-container");
+  fanContainer.classList.add("reshuffling");
+
+  setTimeout(() => {
+    const remaining = shuffledDeck.filter((_, idx) => !pickedIndices.has(idx));
+    shuffledDeck = shuffle(remaining).map((entry) => ({
+      card: entry.card,
+      orientation: Math.random() < 0.5 ? "rev" : "up",
+    }));
+    pickedIndices = new Set();
+
+    renderFan();
+    fanContainer.classList.remove("reshuffling");
+    reshuffleBtn.disabled = false;
+    isShuffling = false;
+  }, 320);
 }
 
 function renderFan() {
@@ -135,6 +171,7 @@ function pickFanCard(idx, el) {
   if (draws.length >= selectedSpread.positions.length) {
     updateDrawInstruction("抽牌完成，靜下心感受一下這幾張牌帶給你的感覺。");
     document.querySelectorAll(".slot").forEach((s) => s.classList.remove("active"));
+    document.getElementById("reshuffle-btn").classList.add("hidden");
     setTimeout(() => {
       document.getElementById("fan-wrap").classList.add("fading-out");
       setTimeout(() => {
@@ -229,6 +266,7 @@ function resetApp() {
 renderSpreadGrid();
 document.getElementById("start-btn").addEventListener("click", startDraw);
 document.getElementById("shuffle-btn").addEventListener("click", runShuffleRitual);
+document.getElementById("reshuffle-btn").addEventListener("click", reshuffleFan);
 document.getElementById("view-result-btn").addEventListener("click", renderResult);
 document.getElementById("analysis-btn").addEventListener("click", runAnalysis);
 document.getElementById("retry-btn").addEventListener("click", resetApp);

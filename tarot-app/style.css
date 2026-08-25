@@ -284,11 +284,41 @@ h1 {
   opacity: 0;
 }
 
+.fan-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin: 0 0 14px;
+  flex-wrap: wrap;
+}
+
 .fan-hint {
   text-align: center;
   font-size: 0.78rem;
   color: var(--ink-dim);
-  margin: 0 0 14px;
+  margin: 0;
+}
+
+.reshuffle-btn {
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--panel-border);
+  background: rgba(0, 0, 0, 0.2);
+  color: var(--gold-soft);
+  font-size: 0.78rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.reshuffle-btn:hover:not(:disabled) {
+  border-color: var(--gold);
+  background: rgba(212, 175, 55, 0.12);
+}
+
+.reshuffle-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .fan-container {
@@ -298,6 +328,12 @@ h1 {
   overflow-y: hidden;
   padding: 24px 40px 28px 16px;
   scrollbar-width: thin;
+  transition: opacity 0.22s ease, transform 0.22s ease;
+}
+
+.fan-container.reshuffling {
+  opacity: 0.15;
+  transform: scale(0.97);
 }
 
 .fan-card {
