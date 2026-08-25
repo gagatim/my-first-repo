@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>塔羅心理測驗</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app">
+
+    <header>
+      <h1>🔮 塔羅心理測驗</h1>
+      <p class="subtitle">用塔羅牌的原型意象，照見此刻的自己</p>
+    </header>
+
+    <main>
+      <!-- Screen 1: 開始 -->
+      <section id="screen-intro" class="screen active">
+        <div class="intro-card">
+          <p class="intro-text">
+            這是一份結合塔羅原型與心理學角度的自我探索小測驗。<br>
+            先想一個你最近在意的問題（也可以留白），選一種牌陣，然後靜下心來抽牌。
+          </p>
+
+          <label class="question-label" for="question-input">你想問的問題（選填）</label>
+          <input id="question-input" type="text" placeholder="例如：我該如何面對目前的工作？" maxlength="60">
+
+          <h2 class="section-title">選擇一種牌陣</h2>
+          <div id="spread-grid" class="spread-grid"></div>
+
+          <button id="start-btn" class="primary-btn" disabled>開始抽牌</button>
+        </div>
+      </section>
+
+      <!-- Screen 2: 抽牌 -->
+      <section id="screen-draw" class="screen">
+        <p class="draw-instruction" id="draw-instruction"></p>
+
+        <div class="deck-area">
+          <div id="deck-pile" class="deck-pile" title="點擊抽牌">
+            <div class="deck-card"></div>
+            <div class="deck-card"></div>
+            <div class="deck-card deck-card-top"></div>
+          </div>
+          <p class="deck-hint">點擊牌堆抽牌</p>
+        </div>
+
+        <div id="position-slots" class="position-slots"></div>
+
+        <button id="view-result-btn" class="primary-btn hidden">查看結果</button>
+      </section>
+
+      <!-- Screen 3: 結果 -->
+      <section id="screen-result" class="screen">
+        <h2 class="section-title">你的牌陣</h2>
+        <div id="result-cards" class="result-cards"></div>
+
+        <div class="analysis-block">
+          <button id="analysis-btn" class="primary-btn">✨ 產生 AI 心理分析</button>
+          <div id="analysis-output" class="analysis-output hidden"></div>
+        </div>
+
+        <button id="retry-btn" class="ghost-btn">重新測驗</button>
+      </section>
+    </main>
+
+    <footer>
+      <p>本測驗僅供自我探索與娛樂參考，並非專業心理諮商或命理建議。</p>
+      <p class="credit">卡牌圖像：Rider–Waite–Smith Tarot（Pamela Colman Smith，1909），已屬公共領域。</p>
+    </footer>
+  </div>
+
+  <script src="data.js"></script>
+  <script src="analysis.js"></script>
+  <script src="main.js"></script>
+</body>
+</html>
