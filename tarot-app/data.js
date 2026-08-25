@@ -242,6 +242,9 @@ MAJOR_ARCANA.forEach((card) => {
   });
 });
 
+// 小阿爾克那圖片檔名的前綴（與 suitKey 不同，來源檔案用的是縮寫 "pents"）
+const SUIT_FILE_PREFIX = { wands: "wands", cups: "cups", swords: "swords", pentacles: "pents" };
+
 Object.keys(MINOR_ARCANA).forEach((suitKey) => {
   const suit = SUITS[suitKey];
   MINOR_ARCANA[suitKey].forEach((card) => {
@@ -252,7 +255,7 @@ Object.keys(MINOR_ARCANA).forEach((suitKey) => {
       element: suit.element,
       name: `${suit.name}${RANK_LABELS[card.rank]}`,
       subtitle: `小阿爾克那・${suit.name}`,
-      img: `assets/cards/${suitKey}${String(card.rank).padStart(2, "0")}.jpg`,
+      img: `assets/cards/${SUIT_FILE_PREFIX[suitKey]}${String(card.rank).padStart(2, "0")}.jpg`,
       keywords: { up: card.up, rev: card.rev },
       text: { up: card.upText, rev: card.revText },
     });
