@@ -44,7 +44,7 @@ function onSpreadSelected(spread, itemEl) {
 function startDraw() {
   shuffledDeck = shuffle(TAROT_DECK).map((card) => ({
     card,
-    orientation: Math.random() < 0.25 ? "rev" : "up",
+    orientation: Math.random() < 0.5 ? "rev" : "up",
   }));
   draws = [];
   pickedIndices = new Set();
