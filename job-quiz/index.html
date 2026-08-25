@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>禁閉逃殺｜職業心理測驗</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app">
+
+    <header>
+      <h1>🔒 禁閉逃殺</h1>
+      <p class="subtitle">職業心理測驗・找出最適合你的求生身份</p>
+    </header>
+
+    <main>
+      <!-- Screen 1: 開始 -->
+      <section id="screen-intro" class="screen active">
+        <div class="panel">
+          <p class="intro-text">
+            回答 10 題直覺問題，從入殮師、化學家、月老到駭客……
+            共 14 種已知職業中，找出跟你個性最合拍的那一個。
+          </p>
+          <p class="intro-note">測驗結果依照你的直覺選擇分析，僅供參考娛樂，實際職業強度請以遊戲內版本為準。</p>
+          <button id="start-btn" class="primary-btn">🎯 開始測驗</button>
+          <button id="tierlist-btn" class="ghost-btn">📋 查看目前已知職業強度榜</button>
+        </div>
+      </section>
+
+      <!-- Screen 2: 題目 -->
+      <section id="screen-quiz" class="screen">
+        <div class="progress-row">
+          <div class="progress-track"><div id="progress-fill" class="progress-fill"></div></div>
+          <span id="progress-text" class="progress-text"></span>
+        </div>
+        <p class="question-text" id="question-text"></p>
+        <div id="option-list" class="option-list"></div>
+      </section>
+
+      <!-- Screen 3: 結果 -->
+      <section id="screen-result" class="screen">
+        <p class="result-lead">測驗結果，你最適合的職業是</p>
+        <div id="result-card" class="result-card"></div>
+
+        <h2 class="section-title">次要傾向</h2>
+        <div id="secondary-list" class="secondary-list"></div>
+
+        <button id="retry-btn" class="primary-btn">🔁 再測一次</button>
+        <button id="tierlist-btn-2" class="ghost-btn">📋 查看完整職業強度榜</button>
+      </section>
+
+      <!-- Screen 4: 強度榜 -->
+      <section id="screen-tierlist" class="screen">
+        <h2 class="section-title">目前已知職業強度榜</h2>
+        <div id="tierlist-content"></div>
+        <button id="back-btn" class="ghost-btn">← 返回</button>
+      </section>
+    </main>
+
+    <footer>
+      <p>本測驗為粉絲自製的趣味小工具，職業強度資訊整理自玩家社群回饋，遊戲版本更新可能使強度變化，請以官方最新資訊為準。</p>
+    </footer>
+  </div>
+
+  <script src="data.js"></script>
+  <script src="main.js"></script>
+</body>
+</html>
